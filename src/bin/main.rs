@@ -54,6 +54,7 @@ fn thing() {
 	}
 
 	let mut bucket_name = format!("rusoto{}", get_time().sec);
+	// let bucket_name = "rusoto1440826511";
 
 	match s3_create_bucket_test(&mut s3, &bucket_name, &region, None) {
 		Ok(_) => { println!("Everything worked for S3 create bucket."); },
@@ -122,6 +123,12 @@ fn thing() {
 	}
 
 	// Working example, replace bucket name, file name, uploadID for your multipart upload:
+	// match s3_list_multipart_upload_parts(&mut s3, &bucket_name, "testfile.zip", "PeePB_uORK5f2AURP_SWcQ4NO1P1oqnGNNNFK3nhFfzMeksdvG7x7nFfH1qk7a3HSossNYB7t8QhcN1Fg6ax7AXbwvAKIZ9DilB4tUcpM7qyUEgkszN4iDmMvSaImGFK") {
+	// 	Err(why) => println!("Error listing multipart upload parts: {:?}", why),
+	// 	Ok(_) => (),
+	// }
+
+	// Working example, replace bucket name, file name, uploadID for your multipart upload:
 	// match s3_abort_multipart_uploads(&mut s3, &bucket_name, "testfile.zip", "W5J7SeEor1A3vcRMMUhAb.BKrMs68.suzyhErssdb2HFAyDb4z7QhJBMyGkM_GSsoFqKJJLjbHcNSZTHa7MhTFJodewzcswshoDHd7mffXPNUH.xoRWVXbkLjakTETaO") {
 	// 	Err(why) => println!("Error aborting multipart uploads: {:?}", why),
 	// 	Ok(_) => (),
@@ -144,6 +151,14 @@ fn thing() {
 		Ok(_) => { println!("Everything worked for S3 delete bucket."); },
 		Err(err) => { println!("Got error in s3 delete bucket: {:#?}", err); }
 	}
+}
+
+fn s3_list_multipart_upload_parts(s3: &mut S3Helper, bucket: &str, object: &str, upload_id: &str) -> Result<(), AWSError> {
+	match s3.multipart_upload_list_parts(bucket, object, upload_id) {
+		Err(why) => println!("Error listing multipart upload parts: {:?}", why),
+		Ok(result) => println!("Multipart upload parts: {:?}", result),
+	}
+	Ok(())
 }
 
 fn s3_list_multipart_uploads(s3: &mut S3Helper, bucket: &str) -> Result<(), AWSError> {
@@ -193,7 +208,6 @@ fn s3_put_object_test(s3: &mut S3Helper, bucket: &str) -> Result<PutObjectOutput
 	}
 }
 
-// uncomment for multipart upload testing:
 fn s3_multipart_upload_test(s3: &mut S3Helper, bucket: &str) -> Result<PutObjectOutput, AWSError> {
 	// Set to a > 5 MB file for testing:
 	let mut f = File::open("testfile.zip").unwrap();

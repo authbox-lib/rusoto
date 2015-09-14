@@ -138,6 +138,9 @@ impl <'a> SignedRequest <'a> {
 			Some(ref h) => h.to_string(),
 			None => build_hostname(&self.service, &self.region)
 		};
+
+		// Gotta remove and re-add headers since by default they append the value.  If we're following
+		// a 307 redirect we end up with Three Stooges in the headers with duplicate values.
 		self.remove_header("host");
 		self.add_header("host", &hostname);
 
@@ -368,6 +371,13 @@ fn extract_s3_redirect_location(response: Response) -> Result<String, AWSError> 
 	extract_s3_temporary_endpoint_from_xml(&mut stack)
 }
 
+fn field_in_s3_redirect(name: &str) -> bool {
+	if name == "Code" || name == "Message" || name == "Bucket" || name == "RequestId" || name == "HostId" {
+		return true;
+	}
+	false
+}
+
 /// extract_s3_temporary_endpoint_from_xml takes in XML and tries to find the value of the Endpoint node.
 fn extract_s3_temporary_endpoint_from_xml<'a, T: Peek + Next>(stack: &mut T) -> Result<String, AWSError> {
 	try!(start_element(&"Error".to_string(), stack));
@@ -380,7 +390,14 @@ fn extract_s3_temporary_endpoint_from_xml<'a, T: Peek + Next>(stack: &mut T) -> 
 			let obj = try!(string_field("Endpoint", stack));
 			return Ok(obj);
 		}
-		stack.next();
+		if field_in_s3_redirect(&current_name){
+			// <foo>bar</foo>:
+			stack.next(); // skip the start tag <foo>
+			stack.next(); // skip contents bar
+			stack.next(); // skip close tag </foo>
+			continue;
+		}
+		break;
 	}
 	Err(AWSError::new("Couldn't find redirect location for S3 bucket"))
 }

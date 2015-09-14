@@ -98,6 +98,12 @@ impl <'a> SignedRequest <'a> {
 		}
 	}
 
+	// If the key exists in headers, set it to blank/unoccupied:
+	pub fn remove_header(&mut self, key: &str) {
+		let key_lower = key.to_ascii_lowercase().to_string();
+		self.headers.remove(&key_lower);
+	}
+
 	/// Add a value to the array of headers for the specified key.
 	/// Headers are kept sorted by key name for use at signing (BTreeMap)
 	pub fn add_header(&mut self, key: &str, value: &str) {
@@ -132,15 +138,18 @@ impl <'a> SignedRequest <'a> {
 			Some(ref h) => h.to_string(),
 			None => build_hostname(&self.service, &self.region)
 		};
+		self.remove_header("host");
 		self.add_header("host", &hostname);
 
 		if let Some(ref token) = *creds.get_token() {
+			self.remove_header("X-Amz-Security-Token");
 			self.add_header("X-Amz-Security-Token", token);
 		}
 
 		self.canonical_query_string = build_canonical_query_string(&self.params);
 
 		let date = now_utc();
+		self.remove_header("x-amz-date");
 		self.add_header("x-amz-date", &date.strftime("%Y%m%dT%H%M%SZ").unwrap().to_string());
 
 		// build the canonical request
@@ -159,6 +168,7 @@ impl <'a> SignedRequest <'a> {
 					canonical_headers,
 					signed_headers,
 					&to_hexdigest_from_string(""));
+				self.remove_header("x-amz-content-sha256");
 				self.add_header("x-amz-content-sha256", &to_hexdigest_from_string(""));
 			}
 			Some(payload) => {
@@ -170,7 +180,9 @@ impl <'a> SignedRequest <'a> {
 					canonical_headers,
 					signed_headers,
 					&to_hexdigest_from_bytes(payload));
+				self.remove_header("x-amz-content-sha256");
 				self.add_header("x-amz-content-sha256", &to_hexdigest_from_bytes(payload));
+				self.remove_header("content-length");
 				self.add_header("content-length", &format!("{}", payload.len()));
 			}
 		}
@@ -181,7 +193,6 @@ impl <'a> SignedRequest <'a> {
 		};
 
 		self.add_header("content-type", &content_type);
-
 
 		// use the hashed canonical request to build the string to sign
 		let hashed_canonical_request = to_hexdigest_from_string(&canonical_request);
@@ -195,17 +206,20 @@ impl <'a> SignedRequest <'a> {
 		// build the actual auth header
 		let auth_header = format!("AWS4-HMAC-SHA256 Credential={}/{}, SignedHeaders={}, Signature={}",
 	               &creds.get_aws_access_key_id(), scope, signed_headers, signature);
+	   self.remove_header("authorization");
 		self.add_header("authorization", &auth_header);
 
 		let response = send_request(&self);
 
 		if response.status == HTTP_TEMPORARY_REDIRECT {
-			// We have to re-sign and resend the request.
+			println!("Found temp redirect, attempting to follow.");
 
 			// extract location from response, modify request and re-sign and resend.
+			let new_hostname = extract_s3_redirect_location(response).unwrap();
+			println!("found hostname of {}", new_hostname);
+			self.set_hostname(Some(new_hostname.to_string()));
 
-			self.set_hostname(Some("new host".to_string()));
-
+			// This does a lot of appending and not clearing/creation, so we'll have to do that ourselves:
 			return self.sign_and_execute(creds);
 		}
 

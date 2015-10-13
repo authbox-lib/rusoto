@@ -103,16 +103,18 @@ def rust_struct(name, shape):
 		print "pub struct " + name + ";\n"
 
 # generate rust code to encode a botocore shape into a map of query parameters
+# TODO: swap this over to putting things into the request headers
 def param_writer(name, shape):
-	print "/// Write " + name + " contents to a SignedRequest"
+	print "/// Write " + name + " contents to a SignedRequest via headers"
 	print 'struct ' + name + 'Writer;'
 	print 'impl ' + name + 'Writer {'
-	print '\tfn write_params(params: &mut Params, name: &str, obj: &' + name + ') {'
+	print '\tfn write_params(request: &mut request, name: &str, obj: &' + name + ') {'
 
 	shape_type = shape['type']
 
 	if shape_type in primitive_writers:
-		print '\t\tparams.put(name, ' + primitive_writers[shape_type] + ');'
+		print '\t\trequest.add_header(name, ' + primitive_writers[shape_type] + ');'
+		# print '\t\tparams.put(name, ' + primitive_writers[shape_type] + ');'
 	elif shape_type == 'list':
 		list_writer(shape)
 	elif shape_type == 'map':
@@ -125,16 +127,16 @@ def param_writer(name, shape):
 
 # guts of the param_writer for struct shapes
 def struct_writer(shape):
-	print '\t\tlet mut prefix = name.to_string();'
-	print '\t\tif prefix != "" { prefix.push_str("."); }'
-
 	for (name, member) in shape['members'].iteritems():
 		location_name = get_location_name(name, member)
+
 		if not is_required(shape, name):
 			print "\t\tif let Some(ref obj) = obj." + c_to_s(name) + " {"
-			print '\t\t\t' + member['shape'] + 'Writer::write_params(params, &(prefix.to_string() + "' + location_name + '"), obj);'
+			print '\t\t\t request.add_header("' + location_name + '", obj);'
+			# print '\t\t\t' + member['shape'] + 'Writer::write_params(params, &(prefix.to_string() + "' + location_name + '"), obj);'
 			print "\t\t}"
 		else:
+			# TODO: oh this needs to switch to headers, too, for some things:
 			print '\t\t' + member['shape'] + 'Writer::write_params(params, &(prefix.to_string() + "' + location_name + '"), &obj.' + c_to_s(name) + ');'
 
 
@@ -159,14 +161,20 @@ def map_writer(shape):
 	print "\t\t}"
 
 # generate rust code to parse a botocore shape from XML
+# TODO: take in a request and an XML stack, we may need both
 def type_parser(name, shape):
 	shape_type = shape['type']
 
-	print "/// Parse " + name + " from XML"
+	if 'location' in shape and shape['location'] == 'header':
+		print '\t\t// should look in header'
+	if 'location' in shape and shape['location'] == 'payload':
+		print '\t\t// should look in payload xml'
+
+	print '//typeparser'
+	print "\n/// Parse " + name + " from response"
 	print 'struct ' + name + 'Parser;'
 	print 'impl ' + name + 'Parser {'
-	# I think this is where the Trait refactor comes in:
-	print '\tfn parse_xml<\'a, T: Peek + Next>(tag_name: &str, stack: &mut T) -> Result<' + name + ', XmlParseError> {'
+	print '\tfn parse_response<\'a, T: Peek + Next>(tag_name: &str, response: &Response stack: &mut T) -> Result<' + name + ', XmlParseError> {'
 
 	if shape_type == 'map':
 		map_parser(shape)
@@ -175,6 +183,7 @@ def type_parser(name, shape):
 	else:
 		print '\t\ttry!(start_element(tag_name, stack));'
 		if shape_type in primitive_parsers:
+			print '\t\t // primitive_parser'
 			print "\t\tlet obj = " + primitive_parsers[shape_type] + ";"
 		elif shape_type == 'structure':
 			struct_parser(name, shape)
@@ -192,6 +201,7 @@ def shape_name(shape):
 
 # guts of the XML parser for map shapes
 def map_parser(shape):
+	print '\t\t // map_parser'
 	print "\t\tlet mut obj = HashMap::new();"
 	print "\t\twhile try!(peek_at_name(stack)) == tag_name {"
 	print "\t\t\ttry!(start_element(tag_name, stack));"
@@ -203,6 +213,7 @@ def map_parser(shape):
 
 # guts of the XML parser for list shapes
 def list_parser(shape):
+	print '\t\t // list_parser'
 	print "\t\tlet mut obj = Vec::new();";
 	print "\t\twhile try!(peek_at_name(stack)) == \"" + shape_name(shape['member']) + "\" {"
 	print "\t\t\tobj.push(try!(" + shape['member']['shape'] + "Parser::parse_xml(\"" + shape_name(shape['member']) + "\", stack)));"
@@ -216,11 +227,14 @@ def is_required(shape, field_name):
 
 # guts of the XML parser for struct shapes
 def struct_parser(name, shape):
+	# if this is a request type it's input only and we don't need a parser
+	print '\t\t // struct_parser'
 	children = shape['members']
 	print '\t\tlet mut obj = ' + name + '::default();'
 	if children:
 		print '\t\tloop {'
 		print '\t\t\tlet current_name = try!(peek_at_name(stack));'
+
 		for (cname, child) in children.iteritems():
 			parse_struct_child(cname, child, is_required(shape, cname))
 		print '\t\t\tbreak;\n\t\t}'
@@ -240,11 +254,24 @@ def get_location_name(name, child):
 
 	return tag_name
 
+# Need to figure out how to explain this well
+def get_location(name, child):
+	if 'location' in child:
+		return child['location'] # should always be header or uri
+	else:
+		return 'payload'
 
 # XML parser code to pull a single struct element from XML
 def parse_struct_child(name, child, required):
 	tag_name = get_location_name(name, child)
-	parse_stmt = 'try!(' + child['shape'] + 'Parser::parse_xml("' + tag_name + '", stack))'
+
+	print '\t\t\t// heylisten etc: location for ' + name + ' is ' + get_location(name, child) + '.'
+
+	if get_location(name, child) == 'header':
+		parse_stmt = 'try!(response.Headers.get(\"' + tag_name + '\"))'
+		# parse_stmt = 'try!(' + child['shape'] + 'Parser::parse_header("' + tag_name + '", stack))'
+	else:
+		parse_stmt = 'try!(' + child['shape'] + 'Parser::parse_xml("' + tag_name + '", stack))'
 
 	if not required:
 		parse_stmt = "Some(" + parse_stmt + ")"
@@ -279,31 +306,38 @@ def request_method(operation):
 		input_type = shapes[input_name]
 		print "\tpub fn " + c_to_s(operation['name']) + "(&self, input: &" + input_name + ") -> Result<" + output_type + ", AWSError> {"
 
-	print '\t\tlet mut request = SignedRequest::new("' + http['method'] + '", "' + metadata['endpointPrefix'] + '", &self.region, "' + http['requestUri'] + '");'
-	print "\t\tlet mut params = Params::new();"
-	print '\t\tparams.put("Action", "' + operation['name'] + '");'
+	# Most of these go to just the bucket
+	print '\t\tlet mut uri = String::from("/");'
+	print '\t\turi = uri +  &input.key.to_string();'
+	print '\t\tlet mut request = SignedRequest::new("' + http['method'] + '", "' + metadata['endpointPrefix'] + '", &self.region, &uri);\n'
 
 	if ('input' in operation):
-		print '\t\t' + input_name + 'Writer::write_params(&mut params, \"\", &input);'
+		print '\t\t' + input_name + 'Writer::write_params(&mut request, \"\", &input);'
 
-	print '\t\trequest.set_params(params);'
+	print '\t\tlet hostname = (&input.bucket).to_string() + ".s3.amazonaws.com";'
+	print '\t\trequest.set_hostname(Some(hostname));\n'
 	print '\t\tlet result = request.sign_and_execute(&self.creds);'
-	print '\t\tlet status = result.status.to_u16();'
-#	print '\t\tprintln!("{}", output);'
-	print '\t\tlet mut reader = EventReader::new(result);'
-	print '\t\tlet mut stack = XmlResponseFromAws::new(reader.events().peekable());'
-	print '\t\tstack.next(); // xml start tag'
-	print '\t\tstack.next();'
-	print '\t\tmatch status {'
+	print '\t\tlet status = result.status.to_u16();\n'
 
+	print '\t\tmatch status {'
 	print '\t\t\t200 => { '
 	if output_type == '()':
 		print '\t\t\t\tOk(())'
 	else:
-		print '\t\t\t\tOk(try!(' + output_type + 'Parser::parse_xml("' + output_type + '", &mut stack)))'
+		print '\t\t\t\tlet mut reader = EventReader::new(result);'
+		print '\t\t\t\tlet mut stack = XmlResponseFromAws::new(reader.events().peekable());'
+		print '\t\t\t\tstack.next(); // xml start tag'
+		print '\t\t\t\tstack.next();\n'
+		print '\t\t\t\tOk(try!(' + output_type + 'Parser::parse_response("' + output_type + '", &result, &mut stack)))'
 	print '\t\t\t}'
 
-	print '\t\t\t_ => { Err(AWSError::new("error")) }'
+	print '\t\t\t_ => { '
+	print '\t\t\t\tlet mut body = String::new();'
+	print '\t\t\t\tresult.read_to_string(&mut body).unwrap();'
+	print '\t\t\t\tprintln!("Error response body: {}", body);'
+
+	print '\t\t\t\tErr(AWSError::new("S3 error in ' + c_to_s(operation['name']) + '"))'
+	print '\t\t\t }'
 
 	print '\t\t}'
 	print "\t}"
@@ -326,6 +360,13 @@ def generate_client():
 
 	print "}"
 
+def pretty(d, indent=0):
+   for key, value in d.iteritems():
+      print '\t' * indent + str(key)
+      if isinstance(value, dict):
+         pretty(value, indent+1)
+      else:
+         print '\t' * (indent+1) + str(value)
 
 def main():
 	with open(sys.argv[1]) as data_file:
@@ -346,9 +387,17 @@ def main():
 			if name == 'Message' or name == 'Error':
 				# print "REASSIGNING"
 				name = sys.argv[2] + name
+
+			# no need to make a parser for an outgoing request
+			if not name.endswith('Request'):
+				type_parser(name, shape)
+
 			rust_type(name, shape)
-			type_parser(name, shape)
-			param_writer(name, shape)
+
+			# no need to make a parameter writer for a type coming back from AWS
+			if not name.endswith('Output') and not name.endswith('Result'):
+				# print '//superlisten: ' + name + ' doesn\'t end with Output or Result so gets a paramwriter\n'
+				param_writer(name, shape)
 
 		generate_client()
 

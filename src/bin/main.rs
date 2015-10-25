@@ -9,34 +9,19 @@ use rusoto::error::*;
 use rusoto::sqs::*;
 use rusoto::s3::*;
 use rusoto::regions::*;
+use rusoto::dynamodb::DynamoDBHelper;
 use time::*;
 use std::fs::File;
 use std::io::Write;
 use std::io::Read;
-use rusoto::signature::SignedRequest;
-use rustc_serialize::json;
-
-#[derive(RustcDecodable, Debug)]
-struct ListTablesResponse {
-    TableNames: Vec<String>
-}
 
 fn main() {
-    let mut creds = DefaultAWSCredentialsProviderChain::new();
-    let region = Region::UsEast1;
+    let creds = DefaultAWSCredentialsProviderChain::new();
+    let region = Region::UsWest2;
 
-    let mut request = SignedRequest::new("POST", "dynamodb", &region, "/");
-    request.set_content_type("application/x-amz-json-1.0".to_string());
-    request.add_header("x-amz-target", "DynamoDB_20120810.ListTables");
-    request.set_payload(Some(b"{\"Limit\": 100}"));
-
-    let mut result = request.sign_and_execute(creds.get_credentials().ok().unwrap());
-    let status = result.status.to_u16();
-    let mut body = String::new();
-    result.read_to_string(&mut body).unwrap();
-    println!("{}", body);
-    let decoded: ListTablesResponse = json::decode(&body).unwrap();
-    println!("{:#?}", decoded);
+    let mut dynamodb = DynamoDBHelper::new(creds, &region);
+    let result = dynamodb.list_tables();
+    println!("{:#?}", result);
 
 }
 

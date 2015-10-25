@@ -1,11 +1,8 @@
 //! DynamoDB bindings for Rust
-#![allow(unused_variables, unused_mut)]
+#![allow(unused_variables, unused_mut, non_snake_case)]
 use credentials::*;
-use xml::*;
 use signature::*;
-use params::*;
 use error::*;
-use std::str::FromStr;
 use regions::*;
 
 // include the code generated from the DynamoDB botocore templates
@@ -18,6 +15,11 @@ pub struct DynamoDBHelper<'a> {
 impl<'a> DynamoDBHelper<'a> {
 	pub fn new<P: AWSCredentialsProvider + 'a>(credentials: P, region:&'a Region) -> DynamoDBHelper<'a> {
 		DynamoDBHelper { client: DynamoDBClient::new(credentials, region) }
+	}
+
+	pub fn list_tables(&mut self) -> Result<ListTablesOutput, AWSError> {
+		let mut req = ListTablesInput::default();
+		self.client.list_tables(&req)
 	}
 
 }

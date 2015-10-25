@@ -1335,7 +1335,8 @@
       "max":100
     },
     "ListTablesOutput":{
-      "type":"structure",
+	"type":"structure",
+	"required":["TableNames"],
       "members":{
         "TableNames":{
           "shape":"TableNameList",

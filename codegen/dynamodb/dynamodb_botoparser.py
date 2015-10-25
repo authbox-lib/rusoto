@@ -21,16 +21,6 @@ primitive_types = {
 	'boolean': 'bool'
 }
 
-# rust code to write primitive types to a string
-primitive_writers = {
-	'string': 'obj',
-	'timestamp': 'obj',
-	'integer': '&obj.to_string()',
-	'double': '&obj.to_string()',
-	'blob': 'str::from_utf8(&obj).unwrap()',
-	'boolean': '&obj.to_string()',
-}
-
 # convert CamelCase to snake_case
 # Also unapolagetically overloaded to prevent collisions with Rust keywords like "type".
 # TODO: stop that, use function specifically for that.
@@ -72,7 +62,7 @@ def rust_type(name, shape):
 
 # generate a rust declaration for a botocore structure shape
 def rust_struct(name, shape):
-	print "#[derive(Debug, Default, RustcDecodable)]";
+	print "#[derive(Debug, Default, RustcDecodable, RustcEncodable)]";
 	if shape['members']:
 		# print "MEMBERS:" + name
 		print "pub struct " + name + " {"
@@ -81,71 +71,12 @@ def rust_struct(name, shape):
 				documentation(member,"\t")
 			rust_type =  member['shape']
 
-			if rust_type == 'Message':
-				rust_type = 'DynamoDB' + rust_type
-
 			if not is_required(shape, mname):
 				rust_type = "Option<" + rust_type + ">"
-			print "\tpub " + c_to_s(mname) + ": " + rust_type + ","
+			print "\tpub " + mname + ": " + rust_type + ","
 		print "}\n"
 	else:
 		print "pub struct " + name + ";\n"
-
-# generate rust code to encode a botocore shape into a map of query parameters
-def param_writer(name, shape):
-	print "/// Write " + name + " contents to a SignedRequest"
-	print 'struct ' + name + 'Writer;'
-	print 'impl ' + name + 'Writer {'
-	print '\tfn write_params(params: &mut Params, name: &str, obj: &' + name + ') {'
-
-	shape_type = shape['type']
-
-	if shape_type in primitive_writers:
-		print '\t\tparams.put(name, ' + primitive_writers[shape_type] + ');'
-	elif shape_type == 'list':
-		list_writer(shape)
-	elif shape_type == 'map':
-		map_writer(shape)
-	elif shape_type == 'structure':
-		struct_writer(shape)
-
-	print '\t}'
-	print '}'
-
-# guts of the param_writer for struct shapes
-def struct_writer(shape):
-	print '\t\tlet mut prefix = name.to_string();'
-	print '\t\tif prefix != "" { prefix.push_str("."); }'
-
-	for (name, member) in shape['members'].iteritems():
-		location_name = get_location_name(name, member)
-		if not is_required(shape, name):
-			print "\t\tif let Some(ref obj) = obj." + c_to_s(name) + " {"
-			print '\t\t\t' + member['shape'] + 'Writer::write_params(params, &(prefix.to_string() + "' + location_name + '"), obj);'
-			print "\t\t}"
-		else:
-			print '\t\t' + member['shape'] + 'Writer::write_params(params, &(prefix.to_string() + "' + location_name + '"), &obj.' + c_to_s(name) + ');'
-
-
-
-# guts of the param_writer for list shapes
-def list_writer(shape):
-	print "\t\tlet mut index = 1;"
-	print "\t\tfor element in obj.iter() {"
-	print "\t\t\tlet key = &format!(\"{}.{}\", name, index);"
-	print "\t\t\t" + shape['member']['shape'] + "Writer::write_params(params, key, &element);"
-	print "\t\t\tindex += 1;"
-	print "\t\t}"
-
-# guts of the param_writer for map shapes
-def map_writer(shape):
-	print "\t\tlet mut index = 1;"
-	print "\t\tfor (key,value) in obj {"
-	print "\t\t\tlet prefix = &format!(\"{}.{}\", name, index);"
-	print "\t\t\t" + shape['key']['shape'] + "Writer::write_params(params, &format!(\"{}.{}\", prefix, \"" + shape_name(shape['key']) + "\"), &key);"
-	print "\t\t\t" + shape['value']['shape'] + "Writer::write_params(params, &format!(\"{}.{}\", prefix, \"" + shape_name(shape['value'])	 + "\"), &value);"
-	print "\t\t\tindex += 1;"
-	print "\t\t}"
 
 
 def shape_name(shape):
@@ -157,7 +88,7 @@ def shape_name(shape):
 
 def is_required(shape, field_name):
 	if not 'required' in shape:
-		return True;
+		return False;
 	else:
 		return 'required' in shape and field_name in shape['required']
 
@@ -204,19 +135,17 @@ def request_method(operation):
 		input_type = shapes[input_name]
 		print "\tpub fn " + c_to_s(operation['name']) + "(&mut self, input: &" + input_name + ") -> Result<" + output_type + ", AWSError> {"
 
-	print '\t\tlet mut request = SignedRequest::new("' + http['method'] + '", "' + metadata['endpointPrefix'] + '", &self.region, "' + http['requestUri'] + '");'
-	print "\t\tlet mut params = Params::new();"
-	print '\t\tparams.put("Action", "' + operation['name'] + '");'
+        print '\t\tlet encoded = json::encode(&input).unwrap();'
+        print '\t\tlet mut request = SignedRequest::new("' + http['method'] + '", "' + metadata['endpointPrefix'] + '", &self.region, "' + http['requestUri'] + '");'
+        print '\t\trequest.set_content_type("application/x-amz-json-1.0".to_string());'
+        print '\t\trequest.add_header("x-amz-target", "DynamoDB_20120810.' + operation['name'] + '");'
+        print '\t\trequest.set_payload(Some(encoded.as_bytes()));'
 
-	if ('input' in operation):
-		print '\t\t' + input_name + 'Writer::write_params(&mut params, \"\", &input);'
-
-	print '\t\trequest.set_params(params);'
         print '\t\tlet mut result = request.sign_and_execute(try!(self.creds.get_credentials()));'
 	print '\t\tlet status = result.status.to_u16();'
         print '\t\tlet mut body = String::new();'
         print '\t\tresult.read_to_string(&mut body).unwrap();'
-        print '\t\tprintln!("{}", body);'        
+#        print '\t\tprintln!("{}", body);'        
         
 	print '\t\tmatch status {'
 
@@ -257,7 +186,6 @@ def main():
 		service = json.load(data_file)
 
 		print "use std::collections::HashMap;"
-		print "use std::str;"
 		print "use std::error::Error;"
                 print "use rustc_serialize::json;"
                 print "use std::io::Read;"
@@ -276,7 +204,6 @@ def main():
 				# print "REASSIGNING"
 				name = 'DynamoDB' + name
 			rust_type(name, shape)
-			param_writer(name, shape)
 
 		generate_client()
 

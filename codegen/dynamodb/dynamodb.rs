@@ -1,15 +1,14 @@
 use std::collections::HashMap;
-use std::str;
 use std::error::Error;
 use rustc_serialize::json;
 use std::io::Read;
 /// Represents the output of a _PutItem_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct PutItemOutput {
 	/// The attribute values as they appeared before the _PutItem_ operation, but only
 	/// if _ReturnValues_ is specified as `ALL_OLD` in the request. Each element
 	/// consists of an attribute name and an attribute value.
-	pub attributes: AttributeMap,
+	pub Attributes: Option<AttributeMap>,
 	/// Information about item collections, if any, that were affected by the
 	/// operation. _ItemCollectionMetrics_ is only returned if the request asked for
 	/// it. If the table does not have any local secondary indexes, this information
@@ -19,23 +18,12 @@ pub struct PutItemOutput {
 	///   * _SizeEstimateRange_ \- An estimate of item collection size, in gigabytes. This value is a two-element array containing a lower bound and an upper bound for the estimate. The estimate includes the size of all the items in the table, plus the size of all attributes projected into all of the local secondary indexes on that table. Use this estimate to measure whether a local secondary index is approaching its size limit.
 	/// The estimate is subject to change over time; therefore, do not rely on the
 	/// precision or accuracy of the estimate.
-	pub item_collection_metrics: ItemCollectionMetrics,
-	pub consumed_capacity: ConsumedCapacity,
+	pub ItemCollectionMetrics: Option<ItemCollectionMetrics>,
+	pub ConsumedCapacity: Option<ConsumedCapacity>,
 }
 
-/// Write PutItemOutput contents to a SignedRequest
-struct PutItemOutputWriter;
-impl PutItemOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &PutItemOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		AttributeMapWriter::write_params(params, &(prefix.to_string() + "Attributes"), &obj.attributes);
-		ItemCollectionMetricsWriter::write_params(params, &(prefix.to_string() + "ItemCollectionMetrics"), &obj.item_collection_metrics);
-		ConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ConsumedCapacity"), &obj.consumed_capacity);
-	}
-}
 /// Represents the input of a _PutItem_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct PutItemInput {
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _ConditionExpression_ instead. Do not combine legacy parameters and
@@ -47,7 +35,7 @@ pub struct PutItemInput {
 	/// If you omit _ConditionalOperator_, then `AND` is the default.
 	/// The operation will succeed only if the entire map evaluates to true.
 	/// This parameter does not support attributes of type List or Map.
-	pub conditional_operator: Option<ConditionalOperator>,
+	pub ConditionalOperator: Option<ConditionalOperator>,
 	/// One or more substitution tokens for attribute names in an expression. The
 	/// following are some use cases for using _ExpressionAttributeNames_:
 	///   * To access an attribute whose name conflicts with a DynamoDB reserved word.
@@ -69,14 +57,14 @@ pub struct PutItemInput {
 	/// For more information on expression attribute names, see [Accessing Item Attrib
 	/// utes](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressi
 	/// ons.AccessingItemAttributes.html) in the _Amazon DynamoDB Developer Guide_.
-	pub expression_attribute_names: Option<ExpressionAttributeNameMap>,
+	pub ExpressionAttributeNames: Option<ExpressionAttributeNameMap>,
 	/// Use _ReturnValues_ if you want to get the item attributes as they appeared
 	/// before they were updated with the _PutItem_ request. For _PutItem_, the valid
 	/// values are:
 	///   * `NONE` \- If _ReturnValues_ is not specified, or if its value is `NONE`, then nothing is returned. (This setting is the default for _ReturnValues_.)
 	///   * `ALL_OLD` \- If _PutItem_ overwrote an attribute name-value pair, then the content of the old item is returned.
 	/// Other "Valid Values" are not relevant to PutItem.
-	pub return_values: Option<ReturnValue>,
+	pub ReturnValues: Option<ReturnValue>,
 	/// A condition that must be satisfied in order for a conditional _PutItem_
 	/// operation to succeed.
 	/// An expression can contain any of the following:
@@ -89,15 +77,15 @@ pub struct PutItemInput {
 	/// fyingConditions.html) in the _Amazon DynamoDB Developer Guide_.
 	/// _ConditionExpression_ replaces the legacy _ConditionalOperator_ and _Expected_
 	/// parameters.
-	pub condition_expression: Option<ConditionExpression>,
+	pub ConditionExpression: Option<ConditionExpression>,
 	/// The name of the table to contain the item.
-	pub table_name: TableName,
+	pub TableName: TableName,
 	/// Determines whether item collection metrics are returned. If set to `SIZE`, the
 	/// response includes statistics about item collections, if any, that were
 	/// modified during the operation are returned in the response. If set to `NONE`
 	/// (the default), no statistics are returned.
-	pub return_item_collection_metrics: Option<ReturnItemCollectionMetrics>,
-	pub return_consumed_capacity: Option<ReturnConsumedCapacity>,
+	pub ReturnItemCollectionMetrics: Option<ReturnItemCollectionMetrics>,
+	pub ReturnConsumedCapacity: Option<ReturnConsumedCapacity>,
 	/// A map of attribute name/value pairs, one for each attribute. Only the primary
 	/// key attributes are required; you can optionally provide other attribute name-
 	/// value pairs for the item.
@@ -112,7 +100,7 @@ pub struct PutItemInput {
 	/// zon.com/amazondynamodb/latest/developerguide/DataModel.html#DataModelPrimaryKe
 	/// y) in the _Amazon DynamoDB Developer Guide_.
 	/// Each element in the _Item_ map is an _AttributeValue_ object.
-	pub item: PutItemInputAttributeMap,
+	pub Item: PutItemInputAttributeMap,
 	/// One or more values that can be substituted in an expression.
 	/// Use the **:** (colon) character in an expression to dereference an attribute
 	/// value. For example, suppose that you wanted to check whether the value of the
@@ -126,7 +114,7 @@ pub struct PutItemInput {
 	/// For more information on expression attribute values, see [Specifying Condition
 	/// s](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions
 	/// .SpecifyingConditions.html) in the _Amazon DynamoDB Developer Guide_.
-	pub expression_attribute_values: Option<ExpressionAttributeValueMap>,
+	pub ExpressionAttributeValues: Option<ExpressionAttributeValueMap>,
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _ConditionExpression_ instead. Do not combine legacy parameters and
 	/// expression parameters in a single API call; otherwise, DynamoDB will return a
@@ -260,64 +248,11 @@ pub struct PutItemInput {
 	/// The _Value_ and _Exists_ parameters are incompatible with _AttributeValueList_
 	/// and _ComparisonOperator_. Note that if you use both sets of parameters at
 	/// once, DynamoDB will return a _ValidationException_ exception.
-	pub expected: Option<ExpectedAttributeMap>,
+	pub Expected: Option<ExpectedAttributeMap>,
 }
 
-/// Write PutItemInput contents to a SignedRequest
-struct PutItemInputWriter;
-impl PutItemInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &PutItemInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		if let Some(ref obj) = obj.conditional_operator {
-			ConditionalOperatorWriter::write_params(params, &(prefix.to_string() + "ConditionalOperator"), obj);
-		}
-		if let Some(ref obj) = obj.expression_attribute_names {
-			ExpressionAttributeNameMapWriter::write_params(params, &(prefix.to_string() + "ExpressionAttributeNames"), obj);
-		}
-		if let Some(ref obj) = obj.return_values {
-			ReturnValueWriter::write_params(params, &(prefix.to_string() + "ReturnValues"), obj);
-		}
-		if let Some(ref obj) = obj.condition_expression {
-			ConditionExpressionWriter::write_params(params, &(prefix.to_string() + "ConditionExpression"), obj);
-		}
-		TableNameWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_name);
-		if let Some(ref obj) = obj.return_item_collection_metrics {
-			ReturnItemCollectionMetricsWriter::write_params(params, &(prefix.to_string() + "ReturnItemCollectionMetrics"), obj);
-		}
-		if let Some(ref obj) = obj.return_consumed_capacity {
-			ReturnConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ReturnConsumedCapacity"), obj);
-		}
-		PutItemInputAttributeMapWriter::write_params(params, &(prefix.to_string() + "Item"), &obj.item);
-		if let Some(ref obj) = obj.expression_attribute_values {
-			ExpressionAttributeValueMapWriter::write_params(params, &(prefix.to_string() + "ExpressionAttributeValues"), obj);
-		}
-		if let Some(ref obj) = obj.expected {
-			ExpectedAttributeMapWriter::write_params(params, &(prefix.to_string() + "Expected"), obj);
-		}
-	}
-}
 pub type GlobalSecondaryIndexDescriptionList = Vec<GlobalSecondaryIndexDescription>;
-/// Write GlobalSecondaryIndexDescriptionList contents to a SignedRequest
-struct GlobalSecondaryIndexDescriptionListWriter;
-impl GlobalSecondaryIndexDescriptionListWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &GlobalSecondaryIndexDescriptionList) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			GlobalSecondaryIndexDescriptionWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type KeyExpression = String;
-/// Write KeyExpression contents to a SignedRequest
-struct KeyExpressionWriter;
-impl KeyExpressionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &KeyExpression) {
-		params.put(name, obj);
-	}
-}
 /// Represents _a single element_ of a key schema. A key schema specifies the
 /// attributes that make up the primary key of a table, or the key attributes of
 /// an index.
@@ -326,27 +261,17 @@ impl KeyExpressionWriter {
 /// _KeySchemaElement_. A hash-and-range type primary key would require one
 /// _KeySchemaElement_ for the hash attribute, and another _KeySchemaElement_ for
 /// the range attribute.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct KeySchemaElement {
 	/// The attribute data, consisting of the data type and the attribute value
 	/// itself.
-	pub key_type: KeyType,
+	pub KeyType: KeyType,
 	/// The name of a key attribute.
-	pub attribute_name: KeySchemaAttributeName,
+	pub AttributeName: KeySchemaAttributeName,
 }
 
-/// Write KeySchemaElement contents to a SignedRequest
-struct KeySchemaElementWriter;
-impl KeySchemaElementWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &KeySchemaElement) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		KeyTypeWriter::write_params(params, &(prefix.to_string() + "KeyType"), &obj.key_type);
-		KeySchemaAttributeNameWriter::write_params(params, &(prefix.to_string() + "AttributeName"), &obj.attribute_name);
-	}
-}
 /// Represents the output of a _BatchWriteItem_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct BatchWriteItemOutput {
 	/// A map of tables and requests against those tables that were not processed. The
 	/// _UnprocessedItems_ value is in the same form as _RequestItems_, so you can
@@ -363,7 +288,7 @@ pub struct BatchWriteItemOutput {
 	/// attribute definition.
 	/// If there are no unprocessed items remaining, the response contains an empty
 	/// _UnprocessedItems_ map.
-	pub unprocessed_items: BatchWriteItemRequestMap,
+	pub UnprocessedItems: Option<BatchWriteItemRequestMap>,
 	/// A list of tables that were processed by _BatchWriteItem_ and, for each table,
 	/// information about any item collections that were affected by individual
 	/// _DeleteItem_ or _PutItem_ operations.
@@ -372,46 +297,25 @@ pub struct BatchWriteItemOutput {
 	///   * _SizeEstimateRange_ \- An estimate of item collection size, expressed in GB. This is a two-element array containing a lower bound and an upper bound for the estimate. The estimate includes the size of all the items in the table, plus the size of all attributes projected into all of the local secondary indexes on the table. Use this estimate to measure whether a local secondary index is approaching its size limit.
 	/// The estimate is subject to change over time; therefore, do not rely on the
 	/// precision or accuracy of the estimate.
-	pub item_collection_metrics: ItemCollectionMetricsPerTable,
+	pub ItemCollectionMetrics: Option<ItemCollectionMetricsPerTable>,
 	/// The capacity units consumed by the operation.
 	/// Each element consists of:
 	///   * _TableName_ \- The table that consumed the provisioned throughput.
 	///   * _CapacityUnits_ \- The total number of capacity units consumed.
-	pub consumed_capacity: ConsumedCapacityMultiple,
+	pub ConsumedCapacity: Option<ConsumedCapacityMultiple>,
 }
 
-/// Write BatchWriteItemOutput contents to a SignedRequest
-struct BatchWriteItemOutputWriter;
-impl BatchWriteItemOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &BatchWriteItemOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		BatchWriteItemRequestMapWriter::write_params(params, &(prefix.to_string() + "UnprocessedItems"), &obj.unprocessed_items);
-		ItemCollectionMetricsPerTableWriter::write_params(params, &(prefix.to_string() + "ItemCollectionMetrics"), &obj.item_collection_metrics);
-		ConsumedCapacityMultipleWriter::write_params(params, &(prefix.to_string() + "ConsumedCapacity"), &obj.consumed_capacity);
-	}
-}
 /// Represents the new provisioned throughput settings to be applied to a global
 /// secondary index.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct UpdateGlobalSecondaryIndexAction {
-	pub provisioned_throughput: ProvisionedThroughput,
+	pub ProvisionedThroughput: ProvisionedThroughput,
 	/// The name of the global secondary index to be updated.
-	pub index_name: IndexName,
+	pub IndexName: IndexName,
 }
 
-/// Write UpdateGlobalSecondaryIndexAction contents to a SignedRequest
-struct UpdateGlobalSecondaryIndexActionWriter;
-impl UpdateGlobalSecondaryIndexActionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &UpdateGlobalSecondaryIndexAction) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ProvisionedThroughputWriter::write_params(params, &(prefix.to_string() + "ProvisionedThroughput"), &obj.provisioned_throughput);
-		IndexNameWriter::write_params(params, &(prefix.to_string() + "IndexName"), &obj.index_name);
-	}
-}
 /// Represents the input of a _BatchGetItem_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct BatchGetItemInput {
 	/// A map of one or more table names and, for each table, a map that describes one
 	/// or more items to retrieve from that table. Each table name can be used only
@@ -459,29 +363,17 @@ pub struct BatchGetItemInput {
 	/// Note that _AttributesToGet_ has no effect on provisioned throughput
 	/// consumption. DynamoDB determines capacity units consumed based on item size,
 	/// not on the amount of data that is returned to an application.
-	pub request_items: BatchGetRequestMap,
-	pub return_consumed_capacity: Option<ReturnConsumedCapacity>,
+	pub RequestItems: BatchGetRequestMap,
+	pub ReturnConsumedCapacity: Option<ReturnConsumedCapacity>,
 }
 
-/// Write BatchGetItemInput contents to a SignedRequest
-struct BatchGetItemInputWriter;
-impl BatchGetItemInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &BatchGetItemInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		BatchGetRequestMapWriter::write_params(params, &(prefix.to_string() + "RequestItems"), &obj.request_items);
-		if let Some(ref obj) = obj.return_consumed_capacity {
-			ReturnConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ReturnConsumedCapacity"), obj);
-		}
-	}
-}
 /// Represents the input of a _GetItem_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct GetItemInput {
 	/// Determines the read consistency model: If set to `true`, then the operation
 	/// uses strongly consistent reads; otherwise, the operation uses eventually
 	/// consistent reads.
-	pub consistent_read: Option<ConsistentRead>,
+	pub ConsistentRead: Option<ConsistentRead>,
 	/// A string that identifies one or more attributes to retrieve from the table.
 	/// These attributes can include scalars, sets, or elements of a JSON document.
 	/// The attributes in the expression must be separated by commas.
@@ -492,7 +384,7 @@ pub struct GetItemInput {
 	/// om/amazondynamodb/latest/developerguide/Expressions.AccessingItemAttributes.ht
 	/// ml) in the _Amazon DynamoDB Developer Guide_.
 	/// _ProjectionExpression_ replaces the legacy _AttributesToGet_ parameter.
-	pub projection_expression: Option<ProjectionExpression>,
+	pub ProjectionExpression: Option<ProjectionExpression>,
 	/// One or more substitution tokens for attribute names in an expression. The
 	/// following are some use cases for using _ExpressionAttributeNames_:
 	///   * To access an attribute whose name conflicts with a DynamoDB reserved word.
@@ -514,10 +406,10 @@ pub struct GetItemInput {
 	/// For more information on expression attribute names, see [Accessing Item Attrib
 	/// utes](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressi
 	/// ons.AccessingItemAttributes.html) in the _Amazon DynamoDB Developer Guide_.
-	pub expression_attribute_names: Option<ExpressionAttributeNameMap>,
+	pub ExpressionAttributeNames: Option<ExpressionAttributeNameMap>,
 	/// The name of the table containing the requested item.
-	pub table_name: TableName,
-	pub return_consumed_capacity: Option<ReturnConsumedCapacity>,
+	pub TableName: TableName,
+	pub ReturnConsumedCapacity: Option<ReturnConsumedCapacity>,
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _ProjectionExpression_ instead. Do not combine legacy parameters
 	/// and expression parameters in a single API call; otherwise, DynamoDB will
@@ -530,55 +422,17 @@ pub struct GetItemInput {
 	/// Note that _AttributesToGet_ has no effect on provisioned throughput
 	/// consumption. DynamoDB determines capacity units consumed based on item size,
 	/// not on the amount of data that is returned to an application.
-	pub attributes_to_get: Option<AttributeNameList>,
+	pub AttributesToGet: Option<AttributeNameList>,
 	/// A map of attribute names to _AttributeValue_ objects, representing the primary
 	/// key of the item to retrieve.
 	/// For the primary key, you must provide all of the attributes. For example, with
 	/// a hash type primary key, you only need to provide the hash attribute. For a
 	/// hash-and-range type primary key, you must provide both the hash attribute and
 	/// the range attribute.
-	pub key: Key,
+	pub Key: Key,
 }
 
-/// Write GetItemInput contents to a SignedRequest
-struct GetItemInputWriter;
-impl GetItemInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &GetItemInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		if let Some(ref obj) = obj.consistent_read {
-			ConsistentReadWriter::write_params(params, &(prefix.to_string() + "ConsistentRead"), obj);
-		}
-		if let Some(ref obj) = obj.projection_expression {
-			ProjectionExpressionWriter::write_params(params, &(prefix.to_string() + "ProjectionExpression"), obj);
-		}
-		if let Some(ref obj) = obj.expression_attribute_names {
-			ExpressionAttributeNameMapWriter::write_params(params, &(prefix.to_string() + "ExpressionAttributeNames"), obj);
-		}
-		TableNameWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_name);
-		if let Some(ref obj) = obj.return_consumed_capacity {
-			ReturnConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ReturnConsumedCapacity"), obj);
-		}
-		if let Some(ref obj) = obj.attributes_to_get {
-			AttributeNameListWriter::write_params(params, &(prefix.to_string() + "AttributeName"), obj);
-		}
-		KeyWriter::write_params(params, &(prefix.to_string() + "Key"), &obj.key);
-	}
-}
 pub type ItemCollectionKeyAttributeMap = HashMap<AttributeName,AttributeValue>;
-/// Write ItemCollectionKeyAttributeMap contents to a SignedRequest
-struct ItemCollectionKeyAttributeMapWriter;
-impl ItemCollectionKeyAttributeMapWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ItemCollectionKeyAttributeMap) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			AttributeNameWriter::write_params(params, &format!("{}.{}", prefix, "AttributeName"), &key);
-			AttributeValueWriter::write_params(params, &format!("{}.{}", prefix, "AttributeValue"), &value);
-			index += 1;
-		}
-	}
-}
 /// Your request rate is too high. The AWS SDKs for DynamoDB automatically retry
 /// requests that receive this exception. Your request is eventually successful,
 /// unless your retry queue is too large to finish. Reduce the frequency of
@@ -586,101 +440,58 @@ impl ItemCollectionKeyAttributeMapWriter {
 /// Retries and Exponential Backoff](http://docs.aws.amazon.com/amazondynamodb/lat
 /// est/developerguide/ErrorHandling.html#APIRetries) in the _Amazon DynamoDB
 /// Developer Guide_.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ProvisionedThroughputExceededException {
 	/// You exceeded your maximum allowed provisioned throughput.
-	pub message: ErrorMessage,
+	pub message: Option<ErrorMessage>,
 }
 
-/// Write ProvisionedThroughputExceededException contents to a SignedRequest
-struct ProvisionedThroughputExceededExceptionWriter;
-impl ProvisionedThroughputExceededExceptionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ProvisionedThroughputExceededException) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ErrorMessageWriter::write_params(params, &(prefix.to_string() + "message"), &obj.message);
-	}
-}
 /// Represents the output of a _ListTables_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ListTablesOutput {
 	/// The name of the last table in the current page of results. Use this value as
 	/// the _ExclusiveStartTableName_ in a new request to obtain the next page of
 	/// results, until all the table names are returned.
 	/// If you do not receive a _LastEvaluatedTableName_ value in the response, this
 	/// means that there are no more table names to be retrieved.
-	pub last_evaluated_table_name: TableName,
+	pub LastEvaluatedTableName: Option<TableName>,
 	/// The names of the tables associated with the current account at the current
 	/// endpoint. The maximum size of this array is 100.
 	/// If _LastEvaluatedTableName_ also appears in the output, you can use this value
 	/// as the _ExclusiveStartTableName_ parameter in a subsequent _ListTables_
 	/// request and obtain the next page of results.
-	pub table_names: TableNameList,
+	pub TableNames: TableNameList,
 }
 
-/// Write ListTablesOutput contents to a SignedRequest
-struct ListTablesOutputWriter;
-impl ListTablesOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ListTablesOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		TableNameWriter::write_params(params, &(prefix.to_string() + "LastEvaluatedTableName"), &obj.last_evaluated_table_name);
-		TableNameListWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_names);
-	}
-}
 pub type ReturnValue = String;
-/// Write ReturnValue contents to a SignedRequest
-struct ReturnValueWriter;
-impl ReturnValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ReturnValue) {
-		params.put(name, obj);
-	}
-}
 /// Represents the output of a _GetItem_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct GetItemOutput {
 	/// A map of attribute names to _AttributeValue_ objects, as specified by
 	/// _AttributesToGet_.
-	pub item: AttributeMap,
-	pub consumed_capacity: ConsumedCapacity,
+	pub Item: Option<AttributeMap>,
+	pub ConsumedCapacity: Option<ConsumedCapacity>,
 }
 
-/// Write GetItemOutput contents to a SignedRequest
-struct GetItemOutputWriter;
-impl GetItemOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &GetItemOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		AttributeMapWriter::write_params(params, &(prefix.to_string() + "Item"), &obj.item);
-		ConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ConsumedCapacity"), &obj.consumed_capacity);
-	}
-}
 pub type KeyType = String;
-/// Write KeyType contents to a SignedRequest
-struct KeyTypeWriter;
-impl KeyTypeWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &KeyType) {
-		params.put(name, obj);
-	}
-}
 /// Represents a set of primary keys and, for each key, the attributes to retrieve
 /// from the table.
 /// For each primary key, you must provide _all_ of the key attributes. For
 /// example, with a hash type primary key, you only need to provide the hash
 /// attribute. For a hash-and-range type primary key, you must provide _both_ the
 /// hash attribute and the range attribute.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct KeysAndAttributes {
 	/// The primary key attribute values that define the items and the attributes
 	/// associated with the items.
-	pub keys: KeyList,
+	pub Keys: KeyList,
 	/// The consistency of a read operation. If set to `true`, then a strongly
 	/// consistent read is used; otherwise, an eventually consistent read is used.
-	pub consistent_read: Option<ConsistentRead>,
+	pub ConsistentRead: Option<ConsistentRead>,
 	/// One or more attributes to retrieve from the table or index. If no attribute
 	/// names are specified then all attributes will be returned. If any of the
 	/// specified attributes are not found, they will not appear in the result.
-	pub attributes_to_get: Option<AttributeNameList>,
+	pub AttributesToGet: Option<AttributeNameList>,
 	/// A string that identifies one or more attributes to retrieve from the table.
 	/// These attributes can include scalars, sets, or elements of a JSON document.
 	/// The attributes in the _ProjectionExpression_ must be separated by commas.
@@ -691,7 +502,7 @@ pub struct KeysAndAttributes {
 	/// om/amazondynamodb/latest/developerguide/Expressions.AccessingItemAttributes.ht
 	/// ml) in the _Amazon DynamoDB Developer Guide_.
 	/// _ProjectionExpression_ replaces the legacy _AttributesToGet_ parameter.
-	pub projection_expression: Option<ProjectionExpression>,
+	pub ProjectionExpression: Option<ProjectionExpression>,
 	/// One or more substitution tokens for attribute names in an expression. The
 	/// following are some use cases for using _ExpressionAttributeNames_:
 	///   * To access an attribute whose name conflicts with a DynamoDB reserved word.
@@ -713,70 +524,20 @@ pub struct KeysAndAttributes {
 	/// For more information on expression attribute names, see [Accessing Item Attrib
 	/// utes](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressi
 	/// ons.AccessingItemAttributes.html) in the _Amazon DynamoDB Developer Guide_.
-	pub expression_attribute_names: Option<ExpressionAttributeNameMap>,
+	pub ExpressionAttributeNames: Option<ExpressionAttributeNameMap>,
 }
 
-/// Write KeysAndAttributes contents to a SignedRequest
-struct KeysAndAttributesWriter;
-impl KeysAndAttributesWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &KeysAndAttributes) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		KeyListWriter::write_params(params, &(prefix.to_string() + "Key"), &obj.keys);
-		if let Some(ref obj) = obj.consistent_read {
-			ConsistentReadWriter::write_params(params, &(prefix.to_string() + "ConsistentRead"), obj);
-		}
-		if let Some(ref obj) = obj.attributes_to_get {
-			AttributeNameListWriter::write_params(params, &(prefix.to_string() + "AttributeName"), obj);
-		}
-		if let Some(ref obj) = obj.projection_expression {
-			ProjectionExpressionWriter::write_params(params, &(prefix.to_string() + "ProjectionExpression"), obj);
-		}
-		if let Some(ref obj) = obj.expression_attribute_names {
-			ExpressionAttributeNameMapWriter::write_params(params, &(prefix.to_string() + "ExpressionAttributeNames"), obj);
-		}
-	}
-}
 pub type AttributeMap = HashMap<AttributeName,AttributeValue>;
-/// Write AttributeMap contents to a SignedRequest
-struct AttributeMapWriter;
-impl AttributeMapWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &AttributeMap) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			AttributeNameWriter::write_params(params, &format!("{}.{}", prefix, "AttributeName"), &key);
-			AttributeValueWriter::write_params(params, &format!("{}.{}", prefix, "AttributeValue"), &value);
-			index += 1;
-		}
-	}
-}
 pub type ScalarAttributeType = String;
-/// Write ScalarAttributeType contents to a SignedRequest
-struct ScalarAttributeTypeWriter;
-impl ScalarAttributeTypeWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ScalarAttributeType) {
-		params.put(name, obj);
-	}
-}
 /// An error occurred on the server side.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct InternalServerError {
 	/// The server encountered an internal error trying to fulfill the request.
-	pub message: ErrorMessage,
+	pub message: Option<ErrorMessage>,
 }
 
-/// Write InternalServerError contents to a SignedRequest
-struct InternalServerErrorWriter;
-impl InternalServerErrorWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &InternalServerError) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ErrorMessageWriter::write_params(params, &(prefix.to_string() + "message"), &obj.message);
-	}
-}
 /// Represents the input of a _CreateTable_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct CreateTableInput {
 	/// One or more global secondary indexes (the maximum is five) to be created on
 	/// the table. Each global secondary index in the array includes the following:
@@ -789,9 +550,9 @@ pub struct CreateTableInput {
 	///       * `ALL` \- All of the table attributes are projected into the index.
 	///     * _NonKeyAttributes_ \- A list of one or more non-key attribute names that are projected into the secondary index. The total count of attributes provided in _NonKeyAttributes_, summed across all of the secondary indexes, must not exceed 20. If you project the same attribute into two different indexes, this counts as two distinct attributes when determining the total.
 	///   * _ProvisionedThroughput_ \- The provisioned throughput settings for the global secondary index, consisting of read and write capacity units.
-	pub global_secondary_indexes: Option<GlobalSecondaryIndexList>,
+	pub GlobalSecondaryIndexes: Option<GlobalSecondaryIndexList>,
 	/// An array of attributes that describe the key schema for the table and indexes.
-	pub attribute_definitions: AttributeDefinitions,
+	pub AttributeDefinitions: AttributeDefinitions,
 	/// One or more local secondary indexes (the maximum is five) to be created on the
 	/// table. Each index is scoped to a given hash key value. There is a 10 GB size
 	/// limit per hash key; otherwise, the size of a local secondary index is
@@ -805,10 +566,10 @@ pub struct CreateTableInput {
 	///       * `INCLUDE` \- Only the specified table attributes are projected into the index. The list of projected attributes are in _NonKeyAttributes_.
 	///       * `ALL` \- All of the table attributes are projected into the index.
 	///     * _NonKeyAttributes_ \- A list of one or more non-key attribute names that are projected into the secondary index. The total count of attributes provided in _NonKeyAttributes_, summed across all of the secondary indexes, must not exceed 20. If you project the same attribute into two different indexes, this counts as two distinct attributes when determining the total.
-	pub local_secondary_indexes: Option<LocalSecondaryIndexList>,
-	pub provisioned_throughput: ProvisionedThroughput,
+	pub LocalSecondaryIndexes: Option<LocalSecondaryIndexList>,
+	pub ProvisionedThroughput: ProvisionedThroughput,
 	/// The name of the table to create.
-	pub table_name: TableName,
+	pub TableName: TableName,
 	/// The settings for DynamoDB Streams on the table. These settings consist of:
 	///   * _StreamEnabled_ \- Indicates whether Streams is to be enabled (true) or disabled (false).
 	///   * _StreamViewType_ \- When an item in the table is modified, _StreamViewType_ determines what information is written to the table's stream. Valid values for _StreamViewType_ are:
@@ -816,7 +577,7 @@ pub struct CreateTableInput {
 	///     * _NEW_IMAGE_ \- The entire item, as it appears after it was modified, is written to the stream.
 	///     * _OLD_IMAGE_ \- The entire item, as it appeared before it was modified, is written to the stream.
 	///     * _NEW_AND_OLD_IMAGES_ \- Both the new and the old item images of the item are written to the stream.
-	pub stream_specification: Option<StreamSpecification>,
+	pub StreamSpecification: Option<StreamSpecification>,
 	/// Specifies the attributes that make up the primary key for a table or an index.
 	/// The attributes in _KeySchema_ must also be defined in the
 	/// _AttributeDefinitions_ array. For more information, see [Data Model](http://do
@@ -833,227 +594,80 @@ pub struct CreateTableInput {
 	/// For more information, see [Specifying the Primary Key](http://docs.aws.amazon.
 	/// com/amazondynamodb/latest/developerguide/WorkingWithTables.html#WorkingWithTab
 	/// les.primary.key) in the _Amazon DynamoDB Developer Guide_.
-	pub key_schema: KeySchema,
+	pub KeySchema: KeySchema,
 }
 
-/// Write CreateTableInput contents to a SignedRequest
-struct CreateTableInputWriter;
-impl CreateTableInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &CreateTableInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		if let Some(ref obj) = obj.global_secondary_indexes {
-			GlobalSecondaryIndexListWriter::write_params(params, &(prefix.to_string() + "GlobalSecondaryIndex"), obj);
-		}
-		AttributeDefinitionsWriter::write_params(params, &(prefix.to_string() + "AttributeDefinition"), &obj.attribute_definitions);
-		if let Some(ref obj) = obj.local_secondary_indexes {
-			LocalSecondaryIndexListWriter::write_params(params, &(prefix.to_string() + "LocalSecondaryIndex"), obj);
-		}
-		ProvisionedThroughputWriter::write_params(params, &(prefix.to_string() + "ProvisionedThroughput"), &obj.provisioned_throughput);
-		TableNameWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_name);
-		if let Some(ref obj) = obj.stream_specification {
-			StreamSpecificationWriter::write_params(params, &(prefix.to_string() + "StreamSpecification"), obj);
-		}
-		KeySchemaWriter::write_params(params, &(prefix.to_string() + "KeySchemaElement"), &obj.key_schema);
-	}
-}
 pub type PositiveLongObject = i64;
-/// Write PositiveLongObject contents to a SignedRequest
-struct PositiveLongObjectWriter;
-impl PositiveLongObjectWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &PositiveLongObject) {
-	}
-}
 /// Represents the data for an attribute. You can set one, and only one, of the
 /// elements.
 /// Each attribute in an item is a name-value pair. An attribute can be single-
 /// valued or multi-valued set. For example, a book item can have title and
 /// authors attributes. Each book has one title but can have many authors. The
 /// multi-valued attribute is a set; duplicate values are not allowed.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct AttributeValue {
 	/// A Binary data type.
-	pub b: BinaryAttributeValue,
+	pub B: Option<BinaryAttributeValue>,
 	/// A Null data type.
-	pub null: NullAttributeValue,
+	pub NULL: Option<NullAttributeValue>,
 	/// A String Set data type.
-	pub ss: StringSetAttributeValue,
+	pub SS: Option<StringSetAttributeValue>,
 	/// A Map of attribute values.
-	pub m: MapAttributeValue,
+	pub M: Option<MapAttributeValue>,
 	/// A List of attribute values.
-	pub l: ListAttributeValue,
+	pub L: Option<ListAttributeValue>,
 	/// A Number data type.
-	pub n: NumberAttributeValue,
+	pub N: Option<NumberAttributeValue>,
 	/// A String data type.
-	pub s: StringAttributeValue,
+	pub S: Option<StringAttributeValue>,
 	/// A Boolean data type.
-	pub bool: BooleanAttributeValue,
+	pub BOOL: Option<BooleanAttributeValue>,
 	/// A Binary Set data type.
-	pub bs: BinarySetAttributeValue,
+	pub BS: Option<BinarySetAttributeValue>,
 	/// A Number Set data type.
-	pub ns: NumberSetAttributeValue,
+	pub NS: Option<NumberSetAttributeValue>,
 }
 
-/// Write AttributeValue contents to a SignedRequest
-struct AttributeValueWriter;
-impl AttributeValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &AttributeValue) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		BinaryAttributeValueWriter::write_params(params, &(prefix.to_string() + "B"), &obj.b);
-		NullAttributeValueWriter::write_params(params, &(prefix.to_string() + "NULL"), &obj.null);
-		StringSetAttributeValueWriter::write_params(params, &(prefix.to_string() + "StringAttributeValue"), &obj.ss);
-		MapAttributeValueWriter::write_params(params, &(prefix.to_string() + "M"), &obj.m);
-		ListAttributeValueWriter::write_params(params, &(prefix.to_string() + "AttributeValue"), &obj.l);
-		NumberAttributeValueWriter::write_params(params, &(prefix.to_string() + "N"), &obj.n);
-		StringAttributeValueWriter::write_params(params, &(prefix.to_string() + "S"), &obj.s);
-		BooleanAttributeValueWriter::write_params(params, &(prefix.to_string() + "BOOL"), &obj.bool);
-		BinarySetAttributeValueWriter::write_params(params, &(prefix.to_string() + "BinaryAttributeValue"), &obj.bs);
-		NumberSetAttributeValueWriter::write_params(params, &(prefix.to_string() + "NumberAttributeValue"), &obj.ns);
-	}
-}
 pub type StreamEnabled = bool;
-/// Write StreamEnabled contents to a SignedRequest
-struct StreamEnabledWriter;
-impl StreamEnabledWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &StreamEnabled) {
-		params.put(name, &obj.to_string());
-	}
-}
 /// Represents the properties of a local secondary index.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct LocalSecondaryIndex {
 	/// The complete key schema for the local secondary index, consisting of one or
 	/// more pairs of attribute names and key types (`HASH` or `RANGE`).
-	pub key_schema: KeySchema,
+	pub KeySchema: KeySchema,
 	/// The name of the local secondary index. The name must be unique among all other
 	/// indexes on this table.
-	pub index_name: IndexName,
-	pub projection: Projection,
+	pub IndexName: IndexName,
+	pub Projection: Projection,
 }
 
-/// Write LocalSecondaryIndex contents to a SignedRequest
-struct LocalSecondaryIndexWriter;
-impl LocalSecondaryIndexWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &LocalSecondaryIndex) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		KeySchemaWriter::write_params(params, &(prefix.to_string() + "KeySchemaElement"), &obj.key_schema);
-		IndexNameWriter::write_params(params, &(prefix.to_string() + "IndexName"), &obj.index_name);
-		ProjectionWriter::write_params(params, &(prefix.to_string() + "Projection"), &obj.projection);
-	}
-}
 pub type AttributeAction = String;
-/// Write AttributeAction contents to a SignedRequest
-struct AttributeActionWriter;
-impl AttributeActionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &AttributeAction) {
-		params.put(name, obj);
-	}
-}
 pub type KeySchema = Vec<KeySchemaElement>;
-/// Write KeySchema contents to a SignedRequest
-struct KeySchemaWriter;
-impl KeySchemaWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &KeySchema) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			KeySchemaElementWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type StreamViewType = String;
-/// Write StreamViewType contents to a SignedRequest
-struct StreamViewTypeWriter;
-impl StreamViewTypeWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &StreamViewType) {
-		params.put(name, obj);
-	}
-}
 pub type ListTablesInputLimit = i32;
-/// Write ListTablesInputLimit contents to a SignedRequest
-struct ListTablesInputLimitWriter;
-impl ListTablesInputLimitWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ListTablesInputLimit) {
-		params.put(name, &obj.to_string());
-	}
-}
 pub type ScanTotalSegments = i32;
-/// Write ScanTotalSegments contents to a SignedRequest
-struct ScanTotalSegmentsWriter;
-impl ScanTotalSegmentsWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ScanTotalSegments) {
-		params.put(name, &obj.to_string());
-	}
-}
 pub type ConditionalOperator = String;
-/// Write ConditionalOperator contents to a SignedRequest
-struct ConditionalOperatorWriter;
-impl ConditionalOperatorWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ConditionalOperator) {
-		params.put(name, obj);
-	}
-}
 pub type LocalSecondaryIndexDescriptionList = Vec<LocalSecondaryIndexDescription>;
-/// Write LocalSecondaryIndexDescriptionList contents to a SignedRequest
-struct LocalSecondaryIndexDescriptionListWriter;
-impl LocalSecondaryIndexDescriptionListWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &LocalSecondaryIndexDescriptionList) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			LocalSecondaryIndexDescriptionWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type LocalSecondaryIndexList = Vec<LocalSecondaryIndex>;
-/// Write LocalSecondaryIndexList contents to a SignedRequest
-struct LocalSecondaryIndexListWriter;
-impl LocalSecondaryIndexListWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &LocalSecondaryIndexList) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			LocalSecondaryIndexWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type UpdateExpression = String;
-/// Write UpdateExpression contents to a SignedRequest
-struct UpdateExpressionWriter;
-impl UpdateExpressionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &UpdateExpression) {
-		params.put(name, obj);
-	}
-}
 pub type Long = i64;
-/// Write Long contents to a SignedRequest
-struct LongWriter;
-impl LongWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &Long) {
-	}
-}
 /// Represents the properties of a global secondary index.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct GlobalSecondaryIndexDescription {
 	/// The total size of the specified index, in bytes. DynamoDB updates this value
 	/// approximately every six hours. Recent changes might not be reflected in this
 	/// value.
-	pub index_size_bytes: Long,
+	pub IndexSizeBytes: Option<Long>,
 	/// The name of the global secondary index.
-	pub index_name: IndexName,
-	pub projection: Projection,
-	pub provisioned_throughput: ProvisionedThroughputDescription,
+	pub IndexName: Option<IndexName>,
+	pub Projection: Option<Projection>,
+	pub ProvisionedThroughput: Option<ProvisionedThroughputDescription>,
 	/// The current state of the global secondary index:
 	///   * _CREATING_ \- The index is being created.
 	///   * _UPDATING_ \- The index is being updated.
 	///   * _DELETING_ \- The index is being deleted.
 	///   * _ACTIVE_ \- The index is ready for use.
-	pub index_status: IndexStatus,
+	pub IndexStatus: Option<IndexStatus>,
 	/// Indicates whether the index is currently backfilling. _Backfilling_ is the
 	/// process of reading items from the table and determining whether they can be
 	/// added to the index. (Not all items will qualify: For example, a hash key
@@ -1062,186 +676,55 @@ pub struct GlobalSecondaryIndexDescription {
 	/// operation is complete and _Backfilling_ is false.
 	/// For indexes that were created during a _CreateTable_ operation, the
 	/// _Backfilling_ attribute does not appear in the _DescribeTable_ output.
-	pub backfilling: Backfilling,
+	pub Backfilling: Option<Backfilling>,
 	/// The complete key schema for the global secondary index, consisting of one or
 	/// more pairs of attribute names and key types (`HASH` or `RANGE`).
-	pub key_schema: KeySchema,
+	pub KeySchema: Option<KeySchema>,
 	/// The Amazon Resource Name (ARN) that uniquely identifies the index.
-	pub index_arn: String,
+	pub IndexArn: Option<String>,
 	/// The number of items in the specified index. DynamoDB updates this value
 	/// approximately every six hours. Recent changes might not be reflected in this
 	/// value.
-	pub item_count: Long,
+	pub ItemCount: Option<Long>,
 }
 
-/// Write GlobalSecondaryIndexDescription contents to a SignedRequest
-struct GlobalSecondaryIndexDescriptionWriter;
-impl GlobalSecondaryIndexDescriptionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &GlobalSecondaryIndexDescription) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		LongWriter::write_params(params, &(prefix.to_string() + "IndexSizeBytes"), &obj.index_size_bytes);
-		IndexNameWriter::write_params(params, &(prefix.to_string() + "IndexName"), &obj.index_name);
-		ProjectionWriter::write_params(params, &(prefix.to_string() + "Projection"), &obj.projection);
-		ProvisionedThroughputDescriptionWriter::write_params(params, &(prefix.to_string() + "ProvisionedThroughput"), &obj.provisioned_throughput);
-		IndexStatusWriter::write_params(params, &(prefix.to_string() + "IndexStatus"), &obj.index_status);
-		BackfillingWriter::write_params(params, &(prefix.to_string() + "Backfilling"), &obj.backfilling);
-		KeySchemaWriter::write_params(params, &(prefix.to_string() + "KeySchemaElement"), &obj.key_schema);
-		StringWriter::write_params(params, &(prefix.to_string() + "IndexArn"), &obj.index_arn);
-		LongWriter::write_params(params, &(prefix.to_string() + "ItemCount"), &obj.item_count);
-	}
-}
 pub type NumberSetAttributeValue = Vec<NumberAttributeValue>;
-/// Write NumberSetAttributeValue contents to a SignedRequest
-struct NumberSetAttributeValueWriter;
-impl NumberSetAttributeValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &NumberSetAttributeValue) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			NumberAttributeValueWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 /// Represents the output of a _CreateTable_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct CreateTableOutput {
-	pub table_description: TableDescription,
+	pub TableDescription: Option<TableDescription>,
 }
 
-/// Write CreateTableOutput contents to a SignedRequest
-struct CreateTableOutputWriter;
-impl CreateTableOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &CreateTableOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		TableDescriptionWriter::write_params(params, &(prefix.to_string() + "TableDescription"), &obj.table_description);
-	}
-}
 /// Represents the properties of a global secondary index.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct GlobalSecondaryIndex {
 	/// The complete key schema for a global secondary index, which consists of one or
 	/// more pairs of attribute names and key types (`HASH` or `RANGE`).
-	pub key_schema: KeySchema,
+	pub KeySchema: KeySchema,
 	/// The name of the global secondary index. The name must be unique among all
 	/// other indexes on this table.
-	pub index_name: IndexName,
-	pub projection: Projection,
-	pub provisioned_throughput: ProvisionedThroughput,
+	pub IndexName: IndexName,
+	pub Projection: Projection,
+	pub ProvisionedThroughput: ProvisionedThroughput,
 }
 
-/// Write GlobalSecondaryIndex contents to a SignedRequest
-struct GlobalSecondaryIndexWriter;
-impl GlobalSecondaryIndexWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &GlobalSecondaryIndex) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		KeySchemaWriter::write_params(params, &(prefix.to_string() + "KeySchemaElement"), &obj.key_schema);
-		IndexNameWriter::write_params(params, &(prefix.to_string() + "IndexName"), &obj.index_name);
-		ProjectionWriter::write_params(params, &(prefix.to_string() + "Projection"), &obj.projection);
-		ProvisionedThroughputWriter::write_params(params, &(prefix.to_string() + "ProvisionedThroughput"), &obj.provisioned_throughput);
-	}
-}
 pub type GlobalSecondaryIndexUpdateList = Vec<GlobalSecondaryIndexUpdate>;
-/// Write GlobalSecondaryIndexUpdateList contents to a SignedRequest
-struct GlobalSecondaryIndexUpdateListWriter;
-impl GlobalSecondaryIndexUpdateListWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &GlobalSecondaryIndexUpdateList) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			GlobalSecondaryIndexUpdateWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type ListAttributeValue = Vec<AttributeValue>;
-/// Write ListAttributeValue contents to a SignedRequest
-struct ListAttributeValueWriter;
-impl ListAttributeValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ListAttributeValue) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			AttributeValueWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type StringAttributeValue = String;
-/// Write StringAttributeValue contents to a SignedRequest
-struct StringAttributeValueWriter;
-impl StringAttributeValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &StringAttributeValue) {
-		params.put(name, obj);
-	}
-}
-/// Write String contents to a SignedRequest
-struct StringWriter;
-impl StringWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &String) {
-		params.put(name, obj);
-	}
-}
 /// The operation tried to access a nonexistent table or index. The resource might
 /// not be specified correctly, or its status might not be `ACTIVE`.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ResourceNotFoundException {
 	/// The resource which is being requested does not exist.
-	pub message: ErrorMessage,
+	pub message: Option<ErrorMessage>,
 }
 
-/// Write ResourceNotFoundException contents to a SignedRequest
-struct ResourceNotFoundExceptionWriter;
-impl ResourceNotFoundExceptionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ResourceNotFoundException) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ErrorMessageWriter::write_params(params, &(prefix.to_string() + "message"), &obj.message);
-	}
-}
 pub type ConsumedCapacityUnits = f64;
-/// Write ConsumedCapacityUnits contents to a SignedRequest
-struct ConsumedCapacityUnitsWriter;
-impl ConsumedCapacityUnitsWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ConsumedCapacityUnits) {
-		params.put(name, &obj.to_string());
-	}
-}
 pub type NumberAttributeValue = String;
-/// Write NumberAttributeValue contents to a SignedRequest
-struct NumberAttributeValueWriter;
-impl NumberAttributeValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &NumberAttributeValue) {
-		params.put(name, obj);
-	}
-}
 pub type ReturnItemCollectionMetrics = String;
-/// Write ReturnItemCollectionMetrics contents to a SignedRequest
-struct ReturnItemCollectionMetricsWriter;
-impl ReturnItemCollectionMetricsWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ReturnItemCollectionMetrics) {
-		params.put(name, obj);
-	}
-}
 pub type FilterConditionMap = HashMap<AttributeName,Condition>;
-/// Write FilterConditionMap contents to a SignedRequest
-struct FilterConditionMapWriter;
-impl FilterConditionMapWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &FilterConditionMap) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			AttributeNameWriter::write_params(params, &format!("{}.{}", prefix, "AttributeName"), &key);
-			ConditionWriter::write_params(params, &format!("{}.{}", prefix, "Condition"), &value);
-			index += 1;
-		}
-	}
-}
 /// Represents the DynamoDB Streams configuration for a table in DynamoDB.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct StreamSpecification {
 	/// The DynamoDB Streams settings for the table. These settings consist of:
 	///   * _StreamEnabled_ \- Indicates whether DynamoDB Streams is enabled (true) or disabled (false) on the table.
@@ -1250,24 +733,14 @@ pub struct StreamSpecification {
 	///     * _NEW_IMAGE_ \- The entire item, as it appears after it was modified, is written to the stream.
 	///     * _OLD_IMAGE_ \- The entire item, as it appeared before it was modified, is written to the stream.
 	///     * _NEW_AND_OLD_IMAGES_ \- Both the new and the old item images of the item are written to the stream.
-	pub stream_view_type: StreamViewType,
+	pub StreamViewType: Option<StreamViewType>,
 	/// Indicates whether DynamoDB Streams is enabled (true) or disabled (false) on
 	/// the table.
-	pub stream_enabled: StreamEnabled,
+	pub StreamEnabled: Option<StreamEnabled>,
 }
 
-/// Write StreamSpecification contents to a SignedRequest
-struct StreamSpecificationWriter;
-impl StreamSpecificationWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &StreamSpecification) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		StreamViewTypeWriter::write_params(params, &(prefix.to_string() + "StreamViewType"), &obj.stream_view_type);
-		StreamEnabledWriter::write_params(params, &(prefix.to_string() + "StreamEnabled"), &obj.stream_enabled);
-	}
-}
 /// Represents the input of an _UpdateItem_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct UpdateItemInput {
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _UpdateExpression_ instead. Do not combine legacy parameters and
@@ -1317,7 +790,7 @@ pub struct UpdateItemInput {
 	/// If you provide any attributes that are part of an index key, then the data
 	/// types for those attributes must match those of the schema in the table's
 	/// attribute definition.
-	pub attribute_updates: Option<AttributeUpdates>,
+	pub AttributeUpdates: Option<AttributeUpdates>,
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _ConditionExpression_ instead. Do not combine legacy parameters and
 	/// expression parameters in a single API call; otherwise, DynamoDB will return a
@@ -1328,7 +801,7 @@ pub struct UpdateItemInput {
 	/// If you omit _ConditionalOperator_, then `AND` is the default.
 	/// The operation will succeed only if the entire map evaluates to true.
 	/// This parameter does not support attributes of type List or Map.
-	pub conditional_operator: Option<ConditionalOperator>,
+	pub ConditionalOperator: Option<ConditionalOperator>,
 	/// One or more substitution tokens for attribute names in an expression. The
 	/// following are some use cases for using _ExpressionAttributeNames_:
 	///   * To access an attribute whose name conflicts with a DynamoDB reserved word.
@@ -1350,7 +823,7 @@ pub struct UpdateItemInput {
 	/// For more information on expression attribute names, see [Accessing Item Attrib
 	/// utes](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressi
 	/// ons.AccessingItemAttributes.html) in the _Amazon DynamoDB Developer Guide_.
-	pub expression_attribute_names: Option<ExpressionAttributeNameMap>,
+	pub ExpressionAttributeNames: Option<ExpressionAttributeNameMap>,
 	/// Use _ReturnValues_ if you want to get the item attributes as they appeared
 	/// either before or after they were updated. For _UpdateItem_, the valid values
 	/// are:
@@ -1359,7 +832,7 @@ pub struct UpdateItemInput {
 	///   * `UPDATED_OLD` \- The old versions of only the updated attributes are returned.
 	///   * `ALL_NEW` \- All of the attributes of the new version of the item are returned.
 	///   * `UPDATED_NEW` \- The new versions of only the updated attributes are returned.
-	pub return_values: Option<ReturnValue>,
+	pub ReturnValues: Option<ReturnValue>,
 	/// A condition that must be satisfied in order for a conditional update to
 	/// succeed.
 	/// An expression can contain any of the following:
@@ -1372,15 +845,15 @@ pub struct UpdateItemInput {
 	/// fyingConditions.html) in the _Amazon DynamoDB Developer Guide_.
 	/// _ConditionExpression_ replaces the legacy _ConditionalOperator_ and _Expected_
 	/// parameters.
-	pub condition_expression: Option<ConditionExpression>,
+	pub ConditionExpression: Option<ConditionExpression>,
 	/// The name of the table containing the item to update.
-	pub table_name: TableName,
+	pub TableName: TableName,
 	/// Determines whether item collection metrics are returned. If set to `SIZE`, the
 	/// response includes statistics about item collections, if any, that were
 	/// modified during the operation are returned in the response. If set to `NONE`
 	/// (the default), no statistics are returned.
-	pub return_item_collection_metrics: Option<ReturnItemCollectionMetrics>,
-	pub return_consumed_capacity: Option<ReturnConsumedCapacity>,
+	pub ReturnItemCollectionMetrics: Option<ReturnItemCollectionMetrics>,
+	pub ReturnConsumedCapacity: Option<ReturnConsumedCapacity>,
 	/// An expression that defines one or more attributes to be updated, the action to
 	/// be performed on them, and new value(s) for them.
 	/// The following action values are available for _UpdateExpression_.
@@ -1419,7 +892,7 @@ pub struct UpdateItemInput {
 	/// s](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions
 	/// .Modifying.html) in the _Amazon DynamoDB Developer Guide_.
 	/// _UpdateExpression_ replaces the legacy _AttributeUpdates_ parameter.
-	pub update_expression: Option<UpdateExpression>,
+	pub UpdateExpression: Option<UpdateExpression>,
 	/// One or more values that can be substituted in an expression.
 	/// Use the **:** (colon) character in an expression to dereference an attribute
 	/// value. For example, suppose that you wanted to check whether the value of the
@@ -1433,14 +906,14 @@ pub struct UpdateItemInput {
 	/// For more information on expression attribute values, see [Specifying Condition
 	/// s](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions
 	/// .SpecifyingConditions.html) in the _Amazon DynamoDB Developer Guide_.
-	pub expression_attribute_values: Option<ExpressionAttributeValueMap>,
+	pub ExpressionAttributeValues: Option<ExpressionAttributeValueMap>,
 	/// The primary key of the item to be updated. Each element consists of an
 	/// attribute name and a value for that attribute.
 	/// For the primary key, you must provide all of the attributes. For example, with
 	/// a hash type primary key, you only need to provide the hash attribute. For a
 	/// hash-and-range type primary key, you must provide both the hash attribute and
 	/// the range attribute.
-	pub key: Key,
+	pub Key: Key,
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _ ConditionExpression _ instead. Do not combine legacy parameters
 	/// and expression parameters in a single API call; otherwise, DynamoDB will
@@ -1574,130 +1047,23 @@ pub struct UpdateItemInput {
 	/// and _ComparisonOperator_. Note that if you use both sets of parameters at
 	/// once, DynamoDB will return a _ValidationException_ exception.
 	/// This parameter does not support attributes of type List or Map.
-	pub expected: Option<ExpectedAttributeMap>,
+	pub Expected: Option<ExpectedAttributeMap>,
 }
 
-/// Write UpdateItemInput contents to a SignedRequest
-struct UpdateItemInputWriter;
-impl UpdateItemInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &UpdateItemInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		if let Some(ref obj) = obj.attribute_updates {
-			AttributeUpdatesWriter::write_params(params, &(prefix.to_string() + "AttributeUpdates"), obj);
-		}
-		if let Some(ref obj) = obj.conditional_operator {
-			ConditionalOperatorWriter::write_params(params, &(prefix.to_string() + "ConditionalOperator"), obj);
-		}
-		if let Some(ref obj) = obj.expression_attribute_names {
-			ExpressionAttributeNameMapWriter::write_params(params, &(prefix.to_string() + "ExpressionAttributeNames"), obj);
-		}
-		if let Some(ref obj) = obj.return_values {
-			ReturnValueWriter::write_params(params, &(prefix.to_string() + "ReturnValues"), obj);
-		}
-		if let Some(ref obj) = obj.condition_expression {
-			ConditionExpressionWriter::write_params(params, &(prefix.to_string() + "ConditionExpression"), obj);
-		}
-		TableNameWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_name);
-		if let Some(ref obj) = obj.return_item_collection_metrics {
-			ReturnItemCollectionMetricsWriter::write_params(params, &(prefix.to_string() + "ReturnItemCollectionMetrics"), obj);
-		}
-		if let Some(ref obj) = obj.return_consumed_capacity {
-			ReturnConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ReturnConsumedCapacity"), obj);
-		}
-		if let Some(ref obj) = obj.update_expression {
-			UpdateExpressionWriter::write_params(params, &(prefix.to_string() + "UpdateExpression"), obj);
-		}
-		if let Some(ref obj) = obj.expression_attribute_values {
-			ExpressionAttributeValueMapWriter::write_params(params, &(prefix.to_string() + "ExpressionAttributeValues"), obj);
-		}
-		KeyWriter::write_params(params, &(prefix.to_string() + "Key"), &obj.key);
-		if let Some(ref obj) = obj.expected {
-			ExpectedAttributeMapWriter::write_params(params, &(prefix.to_string() + "Expected"), obj);
-		}
-	}
-}
 pub type Key = HashMap<AttributeName,AttributeValue>;
-/// Write Key contents to a SignedRequest
-struct KeyWriter;
-impl KeyWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &Key) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			AttributeNameWriter::write_params(params, &format!("{}.{}", prefix, "AttributeName"), &key);
-			AttributeValueWriter::write_params(params, &format!("{}.{}", prefix, "AttributeValue"), &value);
-			index += 1;
-		}
-	}
-}
 pub type BatchGetRequestMap = HashMap<TableName,KeysAndAttributes>;
-/// Write BatchGetRequestMap contents to a SignedRequest
-struct BatchGetRequestMapWriter;
-impl BatchGetRequestMapWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &BatchGetRequestMap) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			TableNameWriter::write_params(params, &format!("{}.{}", prefix, "TableName"), &key);
-			KeysAndAttributesWriter::write_params(params, &format!("{}.{}", prefix, "KeysAndAttributes"), &value);
-			index += 1;
-		}
-	}
-}
 pub type AttributeUpdates = HashMap<AttributeName,AttributeValueUpdate>;
-/// Write AttributeUpdates contents to a SignedRequest
-struct AttributeUpdatesWriter;
-impl AttributeUpdatesWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &AttributeUpdates) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			AttributeNameWriter::write_params(params, &format!("{}.{}", prefix, "AttributeName"), &key);
-			AttributeValueUpdateWriter::write_params(params, &format!("{}.{}", prefix, "AttributeValueUpdate"), &value);
-			index += 1;
-		}
-	}
-}
 /// A condition specified in the operation could not be evaluated.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ConditionalCheckFailedException {
 	/// The conditional request failed.
-	pub message: ErrorMessage,
+	pub message: Option<ErrorMessage>,
 }
 
-/// Write ConditionalCheckFailedException contents to a SignedRequest
-struct ConditionalCheckFailedExceptionWriter;
-impl ConditionalCheckFailedExceptionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ConditionalCheckFailedException) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ErrorMessageWriter::write_params(params, &(prefix.to_string() + "message"), &obj.message);
-	}
-}
 pub type KeySchemaAttributeName = String;
-/// Write KeySchemaAttributeName contents to a SignedRequest
-struct KeySchemaAttributeNameWriter;
-impl KeySchemaAttributeNameWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &KeySchemaAttributeName) {
-		params.put(name, obj);
-	}
-}
 pub type ItemCollectionMetricsMultiple = Vec<ItemCollectionMetrics>;
-/// Write ItemCollectionMetricsMultiple contents to a SignedRequest
-struct ItemCollectionMetricsMultipleWriter;
-impl ItemCollectionMetricsMultipleWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ItemCollectionMetricsMultiple) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			ItemCollectionMetricsWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 /// Represents the input of an _UpdateTable_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct UpdateTableInput {
 	/// An array of one or more global secondary indexes for the table. For each index
 	/// in the array, you can request one action:
@@ -1707,147 +1073,59 @@ pub struct UpdateTableInput {
 	/// For more information, see [Managing Global Secondary Indexes](http://docs.aws.
 	/// amazon.com/amazondynamodb/latest/developerguide/GSI.OnlineOps.html) in the
 	/// _Amazon DynamoDB Developer Guide_.
-	pub global_secondary_index_updates: Option<GlobalSecondaryIndexUpdateList>,
-	pub provisioned_throughput: Option<ProvisionedThroughput>,
+	pub GlobalSecondaryIndexUpdates: Option<GlobalSecondaryIndexUpdateList>,
+	pub ProvisionedThroughput: Option<ProvisionedThroughput>,
 	/// Represents the DynamoDB Streams configuration for the table.
 	/// You will receive a _ResourceInUseException_ if you attempt to enable a stream
 	/// on a table that already has a stream, or if you attempt to disable a stream on
 	/// a table which does not have a stream.
-	pub stream_specification: Option<StreamSpecification>,
+	pub StreamSpecification: Option<StreamSpecification>,
 	/// The name of the table to be updated.
-	pub table_name: TableName,
+	pub TableName: TableName,
 	/// An array of attributes that describe the key schema for the table and indexes.
 	/// If you are adding a new global secondary index to the table,
 	/// _AttributeDefinitions_ must include the key element(s) of the new index.
-	pub attribute_definitions: Option<AttributeDefinitions>,
+	pub AttributeDefinitions: Option<AttributeDefinitions>,
 }
 
-/// Write UpdateTableInput contents to a SignedRequest
-struct UpdateTableInputWriter;
-impl UpdateTableInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &UpdateTableInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		if let Some(ref obj) = obj.global_secondary_index_updates {
-			GlobalSecondaryIndexUpdateListWriter::write_params(params, &(prefix.to_string() + "GlobalSecondaryIndexUpdate"), obj);
-		}
-		if let Some(ref obj) = obj.provisioned_throughput {
-			ProvisionedThroughputWriter::write_params(params, &(prefix.to_string() + "ProvisionedThroughput"), obj);
-		}
-		if let Some(ref obj) = obj.stream_specification {
-			StreamSpecificationWriter::write_params(params, &(prefix.to_string() + "StreamSpecification"), obj);
-		}
-		TableNameWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_name);
-		if let Some(ref obj) = obj.attribute_definitions {
-			AttributeDefinitionsWriter::write_params(params, &(prefix.to_string() + "AttributeDefinition"), obj);
-		}
-	}
-}
 /// Represents the input of a _DescribeTable_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct DescribeTableInput {
 	/// The name of the table to describe.
-	pub table_name: TableName,
+	pub TableName: TableName,
 }
 
-/// Write DescribeTableInput contents to a SignedRequest
-struct DescribeTableInputWriter;
-impl DescribeTableInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &DescribeTableInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		TableNameWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_name);
-	}
-}
 pub type NonKeyAttributeNameList = Vec<NonKeyAttributeName>;
-/// Write NonKeyAttributeNameList contents to a SignedRequest
-struct NonKeyAttributeNameListWriter;
-impl NonKeyAttributeNameListWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &NonKeyAttributeNameList) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			NonKeyAttributeNameWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type ExpressionAttributeNameVariable = String;
-/// Write ExpressionAttributeNameVariable contents to a SignedRequest
-struct ExpressionAttributeNameVariableWriter;
-impl ExpressionAttributeNameVariableWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ExpressionAttributeNameVariable) {
-		params.put(name, obj);
-	}
-}
 pub type IndexStatus = String;
-/// Write IndexStatus contents to a SignedRequest
-struct IndexStatusWriter;
-impl IndexStatusWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &IndexStatus) {
-		params.put(name, obj);
-	}
-}
 /// Represents the provisioned throughput settings for the table, consisting of
 /// read and write capacity units, along with data about increases and decreases.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ProvisionedThroughputDescription {
 	/// The number of provisioned throughput decreases for this table during this UTC
 	/// calendar day. For current maximums on provisioned throughput decreases, see [L
 	/// imits](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.
 	/// html) in the _Amazon DynamoDB Developer Guide_.
-	pub number_of_decreases_today: PositiveLongObject,
+	pub NumberOfDecreasesToday: Option<PositiveLongObject>,
 	/// The maximum number of writes consumed per second before DynamoDB returns a
 	/// _ThrottlingException_.
-	pub write_capacity_units: PositiveLongObject,
+	pub WriteCapacityUnits: Option<PositiveLongObject>,
 	/// The date and time of the last provisioned throughput increase for this table.
-	pub last_increase_date_time: Date,
+	pub LastIncreaseDateTime: Option<Date>,
 	/// The maximum number of strongly consistent reads consumed per second before
 	/// DynamoDB returns a _ThrottlingException_. Eventually consistent reads require
 	/// less effort than strongly consistent reads, so a setting of 50
 	/// _ReadCapacityUnits_ per second provides 100 eventually consistent
 	/// _ReadCapacityUnits_ per second.
-	pub read_capacity_units: PositiveLongObject,
+	pub ReadCapacityUnits: Option<PositiveLongObject>,
 	/// The date and time of the last provisioned throughput decrease for this table.
-	pub last_decrease_date_time: Date,
+	pub LastDecreaseDateTime: Option<Date>,
 }
 
-/// Write ProvisionedThroughputDescription contents to a SignedRequest
-struct ProvisionedThroughputDescriptionWriter;
-impl ProvisionedThroughputDescriptionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ProvisionedThroughputDescription) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		PositiveLongObjectWriter::write_params(params, &(prefix.to_string() + "NumberOfDecreasesToday"), &obj.number_of_decreases_today);
-		PositiveLongObjectWriter::write_params(params, &(prefix.to_string() + "WriteCapacityUnits"), &obj.write_capacity_units);
-		DateWriter::write_params(params, &(prefix.to_string() + "LastIncreaseDateTime"), &obj.last_increase_date_time);
-		PositiveLongObjectWriter::write_params(params, &(prefix.to_string() + "ReadCapacityUnits"), &obj.read_capacity_units);
-		DateWriter::write_params(params, &(prefix.to_string() + "LastDecreaseDateTime"), &obj.last_decrease_date_time);
-	}
-}
 pub type ErrorMessage = String;
-/// Write ErrorMessage contents to a SignedRequest
-struct ErrorMessageWriter;
-impl ErrorMessageWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ErrorMessage) {
-		params.put(name, obj);
-	}
-}
 pub type AttributeValueList = Vec<AttributeValue>;
-/// Write AttributeValueList contents to a SignedRequest
-struct AttributeValueListWriter;
-impl AttributeValueListWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &AttributeValueList) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			AttributeValueWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 /// Represents the input of a _BatchWriteItem_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct BatchWriteItemInput {
 	/// A map of one or more table names and, for each table, a list of operations to
 	/// be performed (_DeleteRequest_ or _PutRequest_). Each element in the map
@@ -1859,53 +1137,25 @@ pub struct BatchWriteItemInput {
 	/// If you specify any attributes that are part of an index key, then the data
 	/// types for those attributes must match those of the schema in the table's
 	/// attribute definition.
-	pub request_items: BatchWriteItemRequestMap,
-	pub return_consumed_capacity: Option<ReturnConsumedCapacity>,
+	pub RequestItems: BatchWriteItemRequestMap,
+	pub ReturnConsumedCapacity: Option<ReturnConsumedCapacity>,
 	/// Determines whether item collection metrics are returned. If set to `SIZE`, the
 	/// response includes statistics about item collections, if any, that were
 	/// modified during the operation are returned in the response. If set to `NONE`
 	/// (the default), no statistics are returned.
-	pub return_item_collection_metrics: Option<ReturnItemCollectionMetrics>,
+	pub ReturnItemCollectionMetrics: Option<ReturnItemCollectionMetrics>,
 }
 
-/// Write BatchWriteItemInput contents to a SignedRequest
-struct BatchWriteItemInputWriter;
-impl BatchWriteItemInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &BatchWriteItemInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		BatchWriteItemRequestMapWriter::write_params(params, &(prefix.to_string() + "RequestItems"), &obj.request_items);
-		if let Some(ref obj) = obj.return_consumed_capacity {
-			ReturnConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ReturnConsumedCapacity"), obj);
-		}
-		if let Some(ref obj) = obj.return_item_collection_metrics {
-			ReturnItemCollectionMetricsWriter::write_params(params, &(prefix.to_string() + "ReturnItemCollectionMetrics"), obj);
-		}
-	}
-}
 pub type BatchGetResponseMap = HashMap<TableName,ItemList>;
-/// Write BatchGetResponseMap contents to a SignedRequest
-struct BatchGetResponseMapWriter;
-impl BatchGetResponseMapWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &BatchGetResponseMap) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			TableNameWriter::write_params(params, &format!("{}.{}", prefix, "TableName"), &key);
-			ItemListWriter::write_params(params, &format!("{}.{}", prefix, "ItemList"), &value);
-			index += 1;
-		}
-	}
-}
 /// Information about item collections, if any, that were affected by the
 /// operation. _ItemCollectionMetrics_ is only returned if the request asked for
 /// it. If the table does not have any local secondary indexes, this information
 /// is not returned in the response.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ItemCollectionMetrics {
 	/// The hash key value of the item collection. This value is the same as the hash
 	/// key of the item.
-	pub item_collection_key: ItemCollectionKeyAttributeMap,
+	pub ItemCollectionKey: Option<ItemCollectionKeyAttributeMap>,
 	/// An estimate of item collection size, in gigabytes. This value is a two-element
 	/// array containing a lower bound and an upper bound for the estimate. The
 	/// estimate includes the size of all the items in the table, plus the size of all
@@ -1914,94 +1164,37 @@ pub struct ItemCollectionMetrics {
 	/// its size limit.
 	/// The estimate is subject to change over time; therefore, do not rely on the
 	/// precision or accuracy of the estimate.
-	pub size_estimate_range_gb: ItemCollectionSizeEstimateRange,
+	pub SizeEstimateRangeGB: Option<ItemCollectionSizeEstimateRange>,
 }
 
-/// Write ItemCollectionMetrics contents to a SignedRequest
-struct ItemCollectionMetricsWriter;
-impl ItemCollectionMetricsWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ItemCollectionMetrics) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ItemCollectionKeyAttributeMapWriter::write_params(params, &(prefix.to_string() + "ItemCollectionKey"), &obj.item_collection_key);
-		ItemCollectionSizeEstimateRangeWriter::write_params(params, &(prefix.to_string() + "ItemCollectionSizeEstimateBound"), &obj.size_estimate_range_gb);
-	}
-}
 /// Represents an attribute for describing the key schema for the table and
 /// indexes.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct AttributeDefinition {
 	/// A name for the attribute.
-	pub attribute_name: KeySchemaAttributeName,
+	pub AttributeName: KeySchemaAttributeName,
 	/// The data type for the attribute.
-	pub attribute_type: ScalarAttributeType,
+	pub AttributeType: ScalarAttributeType,
 }
 
-/// Write AttributeDefinition contents to a SignedRequest
-struct AttributeDefinitionWriter;
-impl AttributeDefinitionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &AttributeDefinition) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		KeySchemaAttributeNameWriter::write_params(params, &(prefix.to_string() + "AttributeName"), &obj.attribute_name);
-		ScalarAttributeTypeWriter::write_params(params, &(prefix.to_string() + "AttributeType"), &obj.attribute_type);
-	}
-}
 pub type StringSetAttributeValue = Vec<StringAttributeValue>;
-/// Write StringSetAttributeValue contents to a SignedRequest
-struct StringSetAttributeValueWriter;
-impl StringSetAttributeValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &StringSetAttributeValue) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			StringAttributeValueWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 /// Represents the output of a _DeleteTable_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct DeleteTableOutput {
-	pub table_description: TableDescription,
+	pub TableDescription: Option<TableDescription>,
 }
 
-/// Write DeleteTableOutput contents to a SignedRequest
-struct DeleteTableOutputWriter;
-impl DeleteTableOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &DeleteTableOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		TableDescriptionWriter::write_params(params, &(prefix.to_string() + "TableDescription"), &obj.table_description);
-	}
-}
 pub type Select = String;
-/// Write Select contents to a SignedRequest
-struct SelectWriter;
-impl SelectWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &Select) {
-		params.put(name, obj);
-	}
-}
 /// Represents the amount of provisioned throughput capacity consumed on a table
 /// or an index.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct Capacity {
 	/// The total number of capacity units consumed on a table or an index.
-	pub capacity_units: ConsumedCapacityUnits,
+	pub CapacityUnits: Option<ConsumedCapacityUnits>,
 }
 
-/// Write Capacity contents to a SignedRequest
-struct CapacityWriter;
-impl CapacityWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &Capacity) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ConsumedCapacityUnitsWriter::write_params(params, &(prefix.to_string() + "CapacityUnits"), &obj.capacity_units);
-	}
-}
 /// Represents the output of a _Query_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct QueryOutput {
 	/// The number of items in the response.
 	/// If you used a _QueryFilter_ in the request, then _Count_ is the number of
@@ -2009,10 +1202,10 @@ pub struct QueryOutput {
 	/// of matching items before&gt; the filter was applied.
 	/// If you did not use a filter in the request, then _Count_ and _ScannedCount_
 	/// are the same.
-	pub count: Integer,
+	pub Count: Option<Integer>,
 	/// An array of item attributes that match the query criteria. Each element in
 	/// this array consists of an attribute name and the value for that attribute.
-	pub items: ItemList,
+	pub Items: Option<ItemList>,
 	/// The primary key of the item where the operation stopped, inclusive of the
 	/// previous result set. Use this value to start a new operation, excluding this
 	/// value in the new request.
@@ -2021,7 +1214,7 @@ pub struct QueryOutput {
 	/// If _LastEvaluatedKey_ is not empty, it does not necessarily mean that there is
 	/// more data in the result set. The only way to know when you have reached the
 	/// end of the result set is when _LastEvaluatedKey_ is empty.
-	pub last_evaluated_key: Key,
+	pub LastEvaluatedKey: Option<Key>,
 	/// The number of items evaluated, before any _QueryFilter_ is applied. A high
 	/// _ScannedCount_ value with few, or no, _Count_ results indicates an inefficient
 	/// _Query_ operation. For more information, see [Count and ScannedCount](http://d
@@ -2029,116 +1222,44 @@ pub struct QueryOutput {
 	/// t) in the _Amazon DynamoDB Developer Guide_.
 	/// If you did not use a filter in the request, then _ScannedCount_ is the same as
 	/// _Count_.
-	pub scanned_count: Integer,
-	pub consumed_capacity: ConsumedCapacity,
+	pub ScannedCount: Option<Integer>,
+	pub ConsumedCapacity: Option<ConsumedCapacity>,
 }
 
-/// Write QueryOutput contents to a SignedRequest
-struct QueryOutputWriter;
-impl QueryOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &QueryOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		IntegerWriter::write_params(params, &(prefix.to_string() + "Count"), &obj.count);
-		ItemListWriter::write_params(params, &(prefix.to_string() + "AttributeMap"), &obj.items);
-		KeyWriter::write_params(params, &(prefix.to_string() + "LastEvaluatedKey"), &obj.last_evaluated_key);
-		IntegerWriter::write_params(params, &(prefix.to_string() + "ScannedCount"), &obj.scanned_count);
-		ConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ConsumedCapacity"), &obj.consumed_capacity);
-	}
-}
 pub type ScanSegment = i32;
-/// Write ScanSegment contents to a SignedRequest
-struct ScanSegmentWriter;
-impl ScanSegmentWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ScanSegment) {
-		params.put(name, &obj.to_string());
-	}
-}
 /// Represents the input of a _ListTables_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ListTablesInput {
 	/// A maximum number of table names to return. If this parameter is not specified,
 	/// the limit is 100.
-	pub limit: ListTablesInputLimit,
+	pub Limit: Option<ListTablesInputLimit>,
 	/// The first table name that this operation will evaluate. Use the value that was
 	/// returned for _LastEvaluatedTableName_ in a previous operation, so that you can
 	/// obtain the next page of results.
-	pub exclusive_start_table_name: TableName,
+	pub ExclusiveStartTableName: Option<TableName>,
 }
 
-/// Write ListTablesInput contents to a SignedRequest
-struct ListTablesInputWriter;
-impl ListTablesInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ListTablesInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ListTablesInputLimitWriter::write_params(params, &(prefix.to_string() + "Limit"), &obj.limit);
-		TableNameWriter::write_params(params, &(prefix.to_string() + "ExclusiveStartTableName"), &obj.exclusive_start_table_name);
-	}
-}
 /// The number of concurrent table requests (cumulative number of tables in the
 /// `CREATING`, `DELETING` or `UPDATING` state) exceeds the maximum allowed of 10.
 /// Also, for tables with secondary indexes, only one of those tables can be in
 /// the `CREATING` state at any point in time. Do not attempt to create more than
 /// one such table simultaneously.
 /// The total limit of tables in the `ACTIVE` state is 250.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct LimitExceededException {
 	/// Too many operations for a given subscriber.
-	pub message: ErrorMessage,
+	pub message: Option<ErrorMessage>,
 }
 
-/// Write LimitExceededException contents to a SignedRequest
-struct LimitExceededExceptionWriter;
-impl LimitExceededExceptionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &LimitExceededException) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ErrorMessageWriter::write_params(params, &(prefix.to_string() + "message"), &obj.message);
-	}
-}
 pub type NonKeyAttributeName = String;
-/// Write NonKeyAttributeName contents to a SignedRequest
-struct NonKeyAttributeNameWriter;
-impl NonKeyAttributeNameWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &NonKeyAttributeName) {
-		params.put(name, obj);
-	}
-}
 pub type NullAttributeValue = bool;
-/// Write NullAttributeValue contents to a SignedRequest
-struct NullAttributeValueWriter;
-impl NullAttributeValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &NullAttributeValue) {
-		params.put(name, &obj.to_string());
-	}
-}
 pub type ProjectionType = String;
-/// Write ProjectionType contents to a SignedRequest
-struct ProjectionTypeWriter;
-impl ProjectionTypeWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ProjectionType) {
-		params.put(name, obj);
-	}
-}
 pub type ItemCollectionSizeEstimateRange = Vec<ItemCollectionSizeEstimateBound>;
-/// Write ItemCollectionSizeEstimateRange contents to a SignedRequest
-struct ItemCollectionSizeEstimateRangeWriter;
-impl ItemCollectionSizeEstimateRangeWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ItemCollectionSizeEstimateRange) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			ItemCollectionSizeEstimateBoundWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 /// Represents one of the following:
 ///   * A new global secondary index to be added to an existing table.
 ///   * New provisioned throughput parameters for an existing global secondary index.
 ///   * An existing global secondary index to be removed from an existing table.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct GlobalSecondaryIndexUpdate {
 	/// The parameters required for creating a global secondary index on an existing
 	/// table:
@@ -2147,72 +1268,27 @@ pub struct GlobalSecondaryIndexUpdate {
 	///   * `AttributeDefinitions `
 	///   * `Projection `
 	///   * `ProvisionedThroughput `
-	pub create: CreateGlobalSecondaryIndexAction,
+	pub Create: Option<CreateGlobalSecondaryIndexAction>,
 	/// The name of an existing global secondary index, along with new provisioned
 	/// throughput settings to be applied to that index.
-	pub update: UpdateGlobalSecondaryIndexAction,
+	pub Update: Option<UpdateGlobalSecondaryIndexAction>,
 	/// The name of an existing global secondary index to be removed.
-	pub delete: DeleteGlobalSecondaryIndexAction,
+	pub Delete: Option<DeleteGlobalSecondaryIndexAction>,
 }
 
-/// Write GlobalSecondaryIndexUpdate contents to a SignedRequest
-struct GlobalSecondaryIndexUpdateWriter;
-impl GlobalSecondaryIndexUpdateWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &GlobalSecondaryIndexUpdate) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		CreateGlobalSecondaryIndexActionWriter::write_params(params, &(prefix.to_string() + "Create"), &obj.create);
-		UpdateGlobalSecondaryIndexActionWriter::write_params(params, &(prefix.to_string() + "Update"), &obj.update);
-		DeleteGlobalSecondaryIndexActionWriter::write_params(params, &(prefix.to_string() + "Delete"), &obj.delete);
-	}
-}
 pub type BinarySetAttributeValue = Vec<BinaryAttributeValue>;
-/// Write BinarySetAttributeValue contents to a SignedRequest
-struct BinarySetAttributeValueWriter;
-impl BinarySetAttributeValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &BinarySetAttributeValue) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			BinaryAttributeValueWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 /// The operation conflicts with the resource's availability. For example, you
 /// attempted to recreate an existing table, or tried to delete a table currently
 /// in the `CREATING` state.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ResourceInUseException {
 	/// The resource which is being attempted to be changed is in use.
-	pub message: ErrorMessage,
+	pub message: Option<ErrorMessage>,
 }
 
-/// Write ResourceInUseException contents to a SignedRequest
-struct ResourceInUseExceptionWriter;
-impl ResourceInUseExceptionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ResourceInUseException) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ErrorMessageWriter::write_params(params, &(prefix.to_string() + "message"), &obj.message);
-	}
-}
 pub type ExpressionAttributeNameMap = HashMap<ExpressionAttributeNameVariable,AttributeName>;
-/// Write ExpressionAttributeNameMap contents to a SignedRequest
-struct ExpressionAttributeNameMapWriter;
-impl ExpressionAttributeNameMapWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ExpressionAttributeNameMap) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			ExpressionAttributeNameVariableWriter::write_params(params, &format!("{}.{}", prefix, "ExpressionAttributeNameVariable"), &key);
-			AttributeNameWriter::write_params(params, &format!("{}.{}", prefix, "AttributeName"), &value);
-			index += 1;
-		}
-	}
-}
 /// Represents the input of a _Query_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct QueryInput {
 	/// A string that contains conditions that DynamoDB applies after the _Query_
 	/// operation, but before the data is returned to you. Items that do not satisfy
@@ -2224,14 +1300,14 @@ pub struct QueryInput {
 	/// _Amazon DynamoDB Developer Guide_.
 	/// _FilterExpression_ replaces the legacy _QueryFilter_ and _ConditionalOperator_
 	/// parameters.
-	pub filter_expression: Option<ConditionExpression>,
+	pub FilterExpression: Option<ConditionExpression>,
 	/// Determines the read consistency model: If set to `true`, then the operation
 	/// uses strongly consistent reads; otherwise, the operation uses eventually
 	/// consistent reads.
 	/// Strongly consistent reads are not supported on global secondary indexes. If
 	/// you query a global secondary index with _ConsistentRead_ set to `true`, you
 	/// will receive a _ValidationException_.
-	pub consistent_read: Option<ConsistentRead>,
+	pub ConsistentRead: Option<ConsistentRead>,
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _FilterExpression_ instead. Do not combine legacy parameters and
 	/// expression parameters in a single API call; otherwise, DynamoDB will return a
@@ -2242,11 +1318,11 @@ pub struct QueryInput {
 	/// If you omit _ConditionalOperator_, then `AND` is the default.
 	/// The operation will succeed only if the entire map evaluates to true.
 	/// This parameter does not support attributes of type List or Map.
-	pub conditional_operator: Option<ConditionalOperator>,
+	pub ConditionalOperator: Option<ConditionalOperator>,
 	/// The name of an index to query. This index can be any local secondary index or
 	/// global secondary index on the table. Note that if you use the _IndexName_
 	/// parameter, you must also provide _TableName._
-	pub index_name: Option<IndexName>,
+	pub IndexName: Option<IndexName>,
 	/// A string that identifies one or more attributes to retrieve from the table.
 	/// These attributes can include scalars, sets, or elements of a JSON document.
 	/// The attributes in the expression must be separated by commas.
@@ -2257,7 +1333,7 @@ pub struct QueryInput {
 	/// om/amazondynamodb/latest/developerguide/Expressions.AccessingItemAttributes.ht
 	/// ml) in the _Amazon DynamoDB Developer Guide_.
 	/// _ProjectionExpression_ replaces the legacy _AttributesToGet_ parameter.
-	pub projection_expression: Option<ProjectionExpression>,
+	pub ProjectionExpression: Option<ProjectionExpression>,
 	/// One or more substitution tokens for attribute names in an expression. The
 	/// following are some use cases for using _ExpressionAttributeNames_:
 	///   * To access an attribute whose name conflicts with a DynamoDB reserved word.
@@ -2279,7 +1355,7 @@ pub struct QueryInput {
 	/// For more information on expression attribute names, see [Accessing Item Attrib
 	/// utes](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressi
 	/// ons.AccessingItemAttributes.html) in the _Amazon DynamoDB Developer Guide_.
-	pub expression_attribute_names: Option<ExpressionAttributeNameMap>,
+	pub ExpressionAttributeNames: Option<ExpressionAttributeNameMap>,
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _FilterExpression_ instead. Do not combine legacy parameters and
 	/// expression parameters in a single API call; otherwise, DynamoDB will return a
@@ -2316,15 +1392,15 @@ pub struct QueryInput {
 	/// For complete descriptions of all comparison operators, see the [Condition](htt
 	/// p://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Condition.html)
 	/// data type.
-	pub query_filter: Option<FilterConditionMap>,
+	pub QueryFilter: Option<FilterConditionMap>,
 	/// The name of the table containing the requested items.
-	pub table_name: TableName,
-	pub return_consumed_capacity: Option<ReturnConsumedCapacity>,
+	pub TableName: TableName,
+	pub ReturnConsumedCapacity: Option<ReturnConsumedCapacity>,
 	/// The primary key of the first item that this operation will evaluate. Use the
 	/// value that was returned for _LastEvaluatedKey_ in the previous operation.
 	/// The data type for _ExclusiveStartKey_ must be String, Number or Binary. No set
 	/// data types are allowed.
-	pub exclusive_start_key: Option<Key>,
+	pub ExclusiveStartKey: Option<Key>,
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _ProjectionExpression_ instead. Do not combine legacy parameters
 	/// and expression parameters in a single API call; otherwise, DynamoDB will
@@ -2348,7 +1424,7 @@ pub struct QueryInput {
 	/// If you query a global secondary index, you can only request attributes that
 	/// are projected into the index. Global secondary index queries cannot fetch
 	/// attributes from the parent table.
-	pub attributes_to_get: Option<AttributeNameList>,
+	pub AttributesToGet: Option<AttributeNameList>,
 	/// The maximum number of items to evaluate (not necessarily the number of
 	/// matching items). If DynamoDB processes the number of items up to the limit
 	/// while processing the results, it stops the operation and returns the matching
@@ -2360,7 +1436,7 @@ pub struct QueryInput {
 	/// operation. For more information, see [Query and Scan](http://docs.aws.amazon.c
 	/// om/amazondynamodb/latest/developerguide/QueryAndScan.html) in the _Amazon
 	/// DynamoDB Developer Guide_.
-	pub limit: Option<PositiveIntegerObject>,
+	pub Limit: Option<PositiveIntegerObject>,
 	/// One or more values that can be substituted in an expression.
 	/// Use the **:** (colon) character in an expression to dereference an attribute
 	/// value. For example, suppose that you wanted to check whether the value of the
@@ -2374,7 +1450,7 @@ pub struct QueryInput {
 	/// For more information on expression attribute values, see [Specifying Condition
 	/// s](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions
 	/// .SpecifyingConditions.html) in the _Amazon DynamoDB Developer Guide_.
-	pub expression_attribute_values: Option<ExpressionAttributeValueMap>,
+	pub ExpressionAttributeValues: Option<ExpressionAttributeValueMap>,
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _KeyConditionExpression_ instead. Do not combine legacy parameters
 	/// and expression parameters in a single API call; otherwise, DynamoDB will
@@ -2450,7 +1526,7 @@ pub struct QueryInput {
 	/// [Legacy Conditional Parameters](http://docs.aws.amazon.com/amazondynamodb/late
 	/// st/developerguide/LegacyConditionalParameters.html) in the _Amazon DynamoDB
 	/// Developer Guide_.
-	pub key_conditions: Option<KeyConditions>,
+	pub KeyConditions: Option<KeyConditions>,
 	/// The condition that specifies the key value(s) for items to be retrieved by the
 	/// _Query_ action.
 	/// The condition must perform an equality test on a single hash key value. The
@@ -2492,7 +1568,7 @@ pub struct QueryInput {
 	/// alues](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Express
 	/// ionPlaceholders.html) in the _Amazon DynamoDB Developer Guide_.
 	/// _KeyConditionExpression_ replaces the legacy _KeyConditions_ parameter.
-	pub key_condition_expression: Option<KeyExpression>,
+	pub KeyConditionExpression: Option<KeyExpression>,
 	/// Specifies the order in which to return the query results - either ascending
 	/// (`true`) or descending (`false`).
 	/// Items with the same hash key are stored in sorted order by range key .If the
@@ -2503,7 +1579,7 @@ pub struct QueryInput {
 	/// range key. This is the default behavior.
 	/// If _ScanIndexForward_ is `false`, DynamoDB sorts the results in descending
 	/// order by range key, and then returns the results to the client.
-	pub scan_index_forward: Option<BooleanObject>,
+	pub ScanIndexForward: Option<BooleanObject>,
 	/// The attributes to be returned in the result. You can retrieve all item
 	/// attributes, specific item attributes, the count of matching items, or in the
 	/// case of an index, some or all of the attributes projected into the index.
@@ -2528,80 +1604,10 @@ pub struct QueryInput {
 	/// If you use the _ProjectionExpression_ parameter, then the value for _Select_
 	/// can only be `SPECIFIC_ATTRIBUTES`. Any other value for _Select_ will return an
 	/// error.
-	pub select: Option<Select>,
+	pub Select: Option<Select>,
 }
 
-/// Write QueryInput contents to a SignedRequest
-struct QueryInputWriter;
-impl QueryInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &QueryInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		if let Some(ref obj) = obj.filter_expression {
-			ConditionExpressionWriter::write_params(params, &(prefix.to_string() + "FilterExpression"), obj);
-		}
-		if let Some(ref obj) = obj.consistent_read {
-			ConsistentReadWriter::write_params(params, &(prefix.to_string() + "ConsistentRead"), obj);
-		}
-		if let Some(ref obj) = obj.conditional_operator {
-			ConditionalOperatorWriter::write_params(params, &(prefix.to_string() + "ConditionalOperator"), obj);
-		}
-		if let Some(ref obj) = obj.index_name {
-			IndexNameWriter::write_params(params, &(prefix.to_string() + "IndexName"), obj);
-		}
-		if let Some(ref obj) = obj.projection_expression {
-			ProjectionExpressionWriter::write_params(params, &(prefix.to_string() + "ProjectionExpression"), obj);
-		}
-		if let Some(ref obj) = obj.expression_attribute_names {
-			ExpressionAttributeNameMapWriter::write_params(params, &(prefix.to_string() + "ExpressionAttributeNames"), obj);
-		}
-		if let Some(ref obj) = obj.query_filter {
-			FilterConditionMapWriter::write_params(params, &(prefix.to_string() + "QueryFilter"), obj);
-		}
-		TableNameWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_name);
-		if let Some(ref obj) = obj.return_consumed_capacity {
-			ReturnConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ReturnConsumedCapacity"), obj);
-		}
-		if let Some(ref obj) = obj.exclusive_start_key {
-			KeyWriter::write_params(params, &(prefix.to_string() + "ExclusiveStartKey"), obj);
-		}
-		if let Some(ref obj) = obj.attributes_to_get {
-			AttributeNameListWriter::write_params(params, &(prefix.to_string() + "AttributeName"), obj);
-		}
-		if let Some(ref obj) = obj.limit {
-			PositiveIntegerObjectWriter::write_params(params, &(prefix.to_string() + "Limit"), obj);
-		}
-		if let Some(ref obj) = obj.expression_attribute_values {
-			ExpressionAttributeValueMapWriter::write_params(params, &(prefix.to_string() + "ExpressionAttributeValues"), obj);
-		}
-		if let Some(ref obj) = obj.key_conditions {
-			KeyConditionsWriter::write_params(params, &(prefix.to_string() + "KeyConditions"), obj);
-		}
-		if let Some(ref obj) = obj.key_condition_expression {
-			KeyExpressionWriter::write_params(params, &(prefix.to_string() + "KeyConditionExpression"), obj);
-		}
-		if let Some(ref obj) = obj.scan_index_forward {
-			BooleanObjectWriter::write_params(params, &(prefix.to_string() + "ScanIndexForward"), obj);
-		}
-		if let Some(ref obj) = obj.select {
-			SelectWriter::write_params(params, &(prefix.to_string() + "Select"), obj);
-		}
-	}
-}
 pub type ExpressionAttributeValueMap = HashMap<ExpressionAttributeValueVariable,AttributeValue>;
-/// Write ExpressionAttributeValueMap contents to a SignedRequest
-struct ExpressionAttributeValueMapWriter;
-impl ExpressionAttributeValueMapWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ExpressionAttributeValueMap) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			ExpressionAttributeValueVariableWriter::write_params(params, &format!("{}.{}", prefix, "ExpressionAttributeValueVariable"), &key);
-			AttributeValueWriter::write_params(params, &format!("{}.{}", prefix, "AttributeValue"), &value);
-			index += 1;
-		}
-	}
-}
 /// For the _UpdateItem_ operation, represents the attributes to be modified, the
 /// action to perform on each, and the new value for each.
 /// You cannot use _UpdateItem_ to update any primary key attributes. Instead, you
@@ -2610,7 +1616,7 @@ impl ExpressionAttributeValueMapWriter {
 /// Attribute values cannot be null; string and binary type attributes must have
 /// lengths greater than zero; and set type attributes must not be empty. Requests
 /// with empty values will be rejected with a _ValidationException_ exception.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct AttributeValueUpdate {
 	/// Specifies how to perform the update. Valid values are `PUT` (default),
 	/// `DELETE`, and `ADD`. The behavior depends on whether the specified primary key
@@ -2644,43 +1650,19 @@ pub struct AttributeValueUpdate {
 	///   * `PUT` \- DynamoDB creates a new item with the specified primary key, and then adds the attribute. 
 	///   * `DELETE` \- Nothing happens; there is no attribute to delete.
 	///   * `ADD` \- DynamoDB creates an item with the supplied primary key and number (or set of numbers) for the attribute value. The only data types allowed are number and number set; no other data types can be specified.
-	pub action: AttributeAction,
-	pub value: AttributeValue,
+	pub Action: Option<AttributeAction>,
+	pub Value: Option<AttributeValue>,
 }
 
-/// Write AttributeValueUpdate contents to a SignedRequest
-struct AttributeValueUpdateWriter;
-impl AttributeValueUpdateWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &AttributeValueUpdate) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		AttributeActionWriter::write_params(params, &(prefix.to_string() + "Action"), &obj.action);
-		AttributeValueWriter::write_params(params, &(prefix.to_string() + "Value"), &obj.value);
-	}
-}
 pub type Date = String;
-/// Write Date contents to a SignedRequest
-struct DateWriter;
-impl DateWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &Date) {
-		params.put(name, obj);
-	}
-}
 pub type Integer = i32;
-/// Write Integer contents to a SignedRequest
-struct IntegerWriter;
-impl IntegerWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &Integer) {
-		params.put(name, &obj.to_string());
-	}
-}
 /// Represents the output of a _DeleteItem_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct DeleteItemOutput {
 	/// A map of attribute names to _AttributeValue_ objects, representing the item as
 	/// it appeared before the _DeleteItem_ operation. This map appears in the
 	/// response only if _ReturnValues_ was specified as `ALL_OLD` in the request.
-	pub attributes: AttributeMap,
+	pub Attributes: Option<AttributeMap>,
 	/// Information about item collections, if any, that were affected by the
 	/// operation. _ItemCollectionMetrics_ is only returned if the request asked for
 	/// it. If the table does not have any local secondary indexes, this information
@@ -2690,28 +1672,17 @@ pub struct DeleteItemOutput {
 	///   * _SizeEstimateRange_ \- An estimate of item collection size, in gigabytes. This value is a two-element array containing a lower bound and an upper bound for the estimate. The estimate includes the size of all the items in the table, plus the size of all attributes projected into all of the local secondary indexes on that table. Use this estimate to measure whether a local secondary index is approaching its size limit.
 	/// The estimate is subject to change over time; therefore, do not rely on the
 	/// precision or accuracy of the estimate.
-	pub item_collection_metrics: ItemCollectionMetrics,
-	pub consumed_capacity: ConsumedCapacity,
+	pub ItemCollectionMetrics: Option<ItemCollectionMetrics>,
+	pub ConsumedCapacity: Option<ConsumedCapacity>,
 }
 
-/// Write DeleteItemOutput contents to a SignedRequest
-struct DeleteItemOutputWriter;
-impl DeleteItemOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &DeleteItemOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		AttributeMapWriter::write_params(params, &(prefix.to_string() + "Attributes"), &obj.attributes);
-		ItemCollectionMetricsWriter::write_params(params, &(prefix.to_string() + "ItemCollectionMetrics"), &obj.item_collection_metrics);
-		ConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ConsumedCapacity"), &obj.consumed_capacity);
-	}
-}
 /// Represents the selection criteria for a _Query_ or _Scan_ operation:
 ///   * For a _Query_ operation, _Condition_ is used for specifying the _KeyConditions_ to use when querying a table or an index. For _KeyConditions_, only the following comparison operators are supported:
 /// `EQ | LE | LT | GE | GT | BEGINS_WITH | BETWEEN`
 /// _Condition_ is also used in a _QueryFilter_, which evaluates the query results
 /// and returns only the desired values.
 ///   * For a _Scan_ operation, _Condition_ is used in a _ScanFilter_, which evaluates the scan results and returns only the desired values.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct Condition {
 	/// A comparator for evaluating attributes. For example, equals, greater than,
 	/// less than, etc.
@@ -2809,7 +1780,7 @@ pub struct Condition {
 	/// [Legacy Conditional Parameters](http://docs.aws.amazon.com/amazondynamodb/late
 	/// st/developerguide/LegacyConditionalParameters.html) in the _Amazon DynamoDB
 	/// Developer Guide_.
-	pub comparison_operator: ComparisonOperator,
+	pub ComparisonOperator: ComparisonOperator,
 	/// One or more values to evaluate against the supplied attribute. The number of
 	/// values in the list depends on the _ComparisonOperator_ being used.
 	/// For type Number, value comparisons are numeric.
@@ -2819,36 +1790,12 @@ pub struct Condition {
 	/// <http://en.wikipedia.org/wiki/ASCII#ASCII_printable_characters>.
 	/// For Binary, DynamoDB treats each byte of the binary data as unsigned when it
 	/// compares binary values.
-	pub attribute_value_list: Option<AttributeValueList>,
+	pub AttributeValueList: Option<AttributeValueList>,
 }
 
-/// Write Condition contents to a SignedRequest
-struct ConditionWriter;
-impl ConditionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &Condition) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ComparisonOperatorWriter::write_params(params, &(prefix.to_string() + "ComparisonOperator"), &obj.comparison_operator);
-		if let Some(ref obj) = obj.attribute_value_list {
-			AttributeValueListWriter::write_params(params, &(prefix.to_string() + "AttributeValue"), obj);
-		}
-	}
-}
 pub type TableNameList = Vec<TableName>;
-/// Write TableNameList contents to a SignedRequest
-struct TableNameListWriter;
-impl TableNameListWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &TableNameList) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			TableNameWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 /// Represents the input of a _Scan_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ScanInput {
 	/// A string that contains conditions that DynamoDB applies after the _Scan_
 	/// operation, but before the data is returned to you. Items that do not satisfy
@@ -2860,7 +1807,7 @@ pub struct ScanInput {
 	/// _Amazon DynamoDB Developer Guide_.
 	/// _FilterExpression_ replaces the legacy _ScanFilter_ and _ConditionalOperator_
 	/// parameters.
-	pub filter_expression: Option<ConditionExpression>,
+	pub FilterExpression: Option<ConditionExpression>,
 	/// A Boolean value that determines the read consistency model during the scan:
 	///   * If _ConsistentRead_ is `false`, then _Scan_ will use eventually consistent reads. The data returned from _Scan_ might not contain the results of other recently completed write operations (PutItem, UpdateItem or DeleteItem). The _Scan_ response might include some stale data.
 	///   * If _ConsistentRead_ is `true`, then _Scan_ will use strongly consistent reads. All of the write operations that completed before the _Scan_ began are guaranteed to be contained in the _Scan_ response.
@@ -2869,7 +1816,7 @@ pub struct ScanInput {
 	/// Strongly consistent reads are not supported on global secondary indexes. If
 	/// you scan a global secondary index with _ConsistentRead_ set to true, you will
 	/// receive a _ValidationException_.
-	pub consistent_read: Option<ConsistentRead>,
+	pub ConsistentRead: Option<ConsistentRead>,
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _FilterExpression_ instead. Do not combine legacy parameters and
 	/// expression parameters in a single API call; otherwise, DynamoDB will return a
@@ -2880,11 +1827,11 @@ pub struct ScanInput {
 	/// If you omit _ConditionalOperator_, then `AND` is the default.
 	/// The operation will succeed only if the entire map evaluates to true.
 	/// This parameter does not support attributes of type List or Map.
-	pub conditional_operator: Option<ConditionalOperator>,
+	pub ConditionalOperator: Option<ConditionalOperator>,
 	/// The name of a secondary index to scan. This index can be any local secondary
 	/// index or global secondary index. Note that if you use the `IndexName`
 	/// parameter, you must also provide `TableName`.
-	pub index_name: Option<IndexName>,
+	pub IndexName: Option<IndexName>,
 	/// A string that identifies one or more attributes to retrieve from the specified
 	/// table or index. These attributes can include scalars, sets, or elements of a
 	/// JSON document. The attributes in the expression must be separated by commas.
@@ -2895,7 +1842,7 @@ pub struct ScanInput {
 	/// om/amazondynamodb/latest/developerguide/Expressions.AccessingItemAttributes.ht
 	/// ml) in the _Amazon DynamoDB Developer Guide_.
 	/// _ProjectionExpression_ replaces the legacy _AttributesToGet_ parameter.
-	pub projection_expression: Option<ProjectionExpression>,
+	pub ProjectionExpression: Option<ProjectionExpression>,
 	/// One or more substitution tokens for attribute names in an expression. The
 	/// following are some use cases for using _ExpressionAttributeNames_:
 	///   * To access an attribute whose name conflicts with a DynamoDB reserved word.
@@ -2917,11 +1864,11 @@ pub struct ScanInput {
 	/// For more information on expression attribute names, see [Accessing Item Attrib
 	/// utes](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressi
 	/// ons.AccessingItemAttributes.html) in the _Amazon DynamoDB Developer Guide_.
-	pub expression_attribute_names: Option<ExpressionAttributeNameMap>,
+	pub ExpressionAttributeNames: Option<ExpressionAttributeNameMap>,
 	/// The name of the table containing the requested items; or, if you provide
 	/// `IndexName`, the name of the table to which that index belongs.
-	pub table_name: TableName,
-	pub return_consumed_capacity: Option<ReturnConsumedCapacity>,
+	pub TableName: TableName,
+	pub ReturnConsumedCapacity: Option<ReturnConsumedCapacity>,
 	/// The primary key of the first item that this operation will evaluate. Use the
 	/// value that was returned for _LastEvaluatedKey_ in the previous operation.
 	/// The data type for _ExclusiveStartKey_ must be String, Number or Binary. No set
@@ -2929,7 +1876,7 @@ pub struct ScanInput {
 	/// In a parallel scan, a _Scan_ request that includes _ExclusiveStartKey_ must
 	/// specify the same segment whose previous _Scan_ returned the corresponding
 	/// value of _LastEvaluatedKey_.
-	pub exclusive_start_key: Option<Key>,
+	pub ExclusiveStartKey: Option<Key>,
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _ProjectionExpression_ instead. Do not combine legacy parameters
 	/// and expression parameters in a single API call; otherwise, DynamoDB will
@@ -2942,7 +1889,7 @@ pub struct ScanInput {
 	/// Note that _AttributesToGet_ has no effect on provisioned throughput
 	/// consumption. DynamoDB determines capacity units consumed based on item size,
 	/// not on the amount of data that is returned to an application.
-	pub attributes_to_get: Option<AttributeNameList>,
+	pub AttributesToGet: Option<AttributeNameList>,
 	/// The maximum number of items to evaluate (not necessarily the number of
 	/// matching items). If DynamoDB processes the number of items up to the limit
 	/// while processing the results, it stops the operation and returns the matching
@@ -2954,7 +1901,7 @@ pub struct ScanInput {
 	/// operation. For more information, see [Query and Scan](http://docs.aws.amazon.c
 	/// om/amazondynamodb/latest/developerguide/QueryAndScan.html) in the _Amazon
 	/// DynamoDB Developer Guide_.
-	pub limit: Option<PositiveIntegerObject>,
+	pub Limit: Option<PositiveIntegerObject>,
 	/// For a parallel _Scan_ request, _TotalSegments_ represents the total number of
 	/// segments into which the _Scan_ operation will be divided. The value of
 	/// _TotalSegments_ corresponds to the number of application workers that will
@@ -2964,7 +1911,7 @@ pub struct ScanInput {
 	/// than or equal to 1000000. If you specify a _TotalSegments_ value of 1, the
 	/// _Scan_ operation will be sequential rather than parallel.
 	/// If you specify _TotalSegments_, you must also specify _Segment_.
-	pub total_segments: Option<ScanTotalSegments>,
+	pub TotalSegments: Option<ScanTotalSegments>,
 	/// For a parallel _Scan_ request, _Segment_ identifies an individual segment to
 	/// be scanned by an application worker.
 	/// Segment IDs are zero-based, so the first segment is always 0. For example, if
@@ -2977,7 +1924,7 @@ pub struct ScanInput {
 	/// The value for _Segment_ must be greater than or equal to 0, and less than the
 	/// value provided for _TotalSegments_.
 	/// If you provide _Segment_, you must also provide _TotalSegments_.
-	pub segment: Option<ScanSegment>,
+	pub Segment: Option<ScanSegment>,
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _FilterExpression_ instead. Do not combine legacy parameters and
 	/// expression parameters in a single API call; otherwise, DynamoDB will return a
@@ -3009,7 +1956,7 @@ pub struct ScanInput {
 	/// BEGINS_WITH | IN | BETWEEN`
 	/// For complete descriptions of all comparison operators, see [Condition](http://
 	/// docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Condition.html).
-	pub scan_filter: Option<FilterConditionMap>,
+	pub ScanFilter: Option<FilterConditionMap>,
 	/// The attributes to be returned in the result. You can retrieve all item
 	/// attributes, specific item attributes, or the count of matching items.
 	///   * `ALL_ATTRIBUTES` \- Returns all of the item attributes.
@@ -3020,7 +1967,7 @@ pub struct ScanInput {
 	/// in a single request, unless the value for _Select_ is `SPECIFIC_ATTRIBUTES`.
 	/// (This usage is equivalent to specifying _AttributesToGet_ without any value
 	/// for _Select_.)
-	pub select: Option<Select>,
+	pub Select: Option<Select>,
 	/// One or more values that can be substituted in an expression.
 	/// Use the **:** (colon) character in an expression to dereference an attribute
 	/// value. For example, suppose that you wanted to check whether the value of the
@@ -3034,63 +1981,9 @@ pub struct ScanInput {
 	/// For more information on expression attribute values, see [Specifying Condition
 	/// s](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions
 	/// .SpecifyingConditions.html) in the _Amazon DynamoDB Developer Guide_.
-	pub expression_attribute_values: Option<ExpressionAttributeValueMap>,
+	pub ExpressionAttributeValues: Option<ExpressionAttributeValueMap>,
 }
 
-/// Write ScanInput contents to a SignedRequest
-struct ScanInputWriter;
-impl ScanInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ScanInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		if let Some(ref obj) = obj.filter_expression {
-			ConditionExpressionWriter::write_params(params, &(prefix.to_string() + "FilterExpression"), obj);
-		}
-		if let Some(ref obj) = obj.consistent_read {
-			ConsistentReadWriter::write_params(params, &(prefix.to_string() + "ConsistentRead"), obj);
-		}
-		if let Some(ref obj) = obj.conditional_operator {
-			ConditionalOperatorWriter::write_params(params, &(prefix.to_string() + "ConditionalOperator"), obj);
-		}
-		if let Some(ref obj) = obj.index_name {
-			IndexNameWriter::write_params(params, &(prefix.to_string() + "IndexName"), obj);
-		}
-		if let Some(ref obj) = obj.projection_expression {
-			ProjectionExpressionWriter::write_params(params, &(prefix.to_string() + "ProjectionExpression"), obj);
-		}
-		if let Some(ref obj) = obj.expression_attribute_names {
-			ExpressionAttributeNameMapWriter::write_params(params, &(prefix.to_string() + "ExpressionAttributeNames"), obj);
-		}
-		TableNameWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_name);
-		if let Some(ref obj) = obj.return_consumed_capacity {
-			ReturnConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ReturnConsumedCapacity"), obj);
-		}
-		if let Some(ref obj) = obj.exclusive_start_key {
-			KeyWriter::write_params(params, &(prefix.to_string() + "ExclusiveStartKey"), obj);
-		}
-		if let Some(ref obj) = obj.attributes_to_get {
-			AttributeNameListWriter::write_params(params, &(prefix.to_string() + "AttributeName"), obj);
-		}
-		if let Some(ref obj) = obj.limit {
-			PositiveIntegerObjectWriter::write_params(params, &(prefix.to_string() + "Limit"), obj);
-		}
-		if let Some(ref obj) = obj.total_segments {
-			ScanTotalSegmentsWriter::write_params(params, &(prefix.to_string() + "TotalSegments"), obj);
-		}
-		if let Some(ref obj) = obj.segment {
-			ScanSegmentWriter::write_params(params, &(prefix.to_string() + "Segment"), obj);
-		}
-		if let Some(ref obj) = obj.scan_filter {
-			FilterConditionMapWriter::write_params(params, &(prefix.to_string() + "ScanFilter"), obj);
-		}
-		if let Some(ref obj) = obj.select {
-			SelectWriter::write_params(params, &(prefix.to_string() + "Select"), obj);
-		}
-		if let Some(ref obj) = obj.expression_attribute_values {
-			ExpressionAttributeValueMapWriter::write_params(params, &(prefix.to_string() + "ExpressionAttributeValues"), obj);
-		}
-	}
-}
 /// Determines the level of detail about provisioned throughput consumption that
 /// is returned in the response:
 ///   * _INDEXES_ \- The response includes the aggregate _ConsumedCapacity_ for the operation, together with _ConsumedCapacity_ for each table and secondary index that was accessed.
@@ -3100,31 +1993,10 @@ impl ScanInputWriter {
 ///   * _TOTAL_ \- The response includes only the aggregate _ConsumedCapacity_ for the operation.
 ///   * _NONE_ \- No _ConsumedCapacity_ details are included in the response.
 pub type ReturnConsumedCapacity = String;
-/// Write ReturnConsumedCapacity contents to a SignedRequest
-struct ReturnConsumedCapacityWriter;
-impl ReturnConsumedCapacityWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ReturnConsumedCapacity) {
-		params.put(name, obj);
-	}
-}
 pub type Backfilling = bool;
-/// Write Backfilling contents to a SignedRequest
-struct BackfillingWriter;
-impl BackfillingWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &Backfilling) {
-		params.put(name, &obj.to_string());
-	}
-}
 pub type BooleanObject = bool;
-/// Write BooleanObject contents to a SignedRequest
-struct BooleanObjectWriter;
-impl BooleanObjectWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &BooleanObject) {
-		params.put(name, &obj.to_string());
-	}
-}
 /// Represents the output of a _BatchGetItem_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct BatchGetItemOutput {
 	/// A map of tables and their respective keys that were not processed with the
 	/// current response. The _UnprocessedKeys_ value is in the same form as
@@ -3137,233 +2009,80 @@ pub struct BatchGetItemOutput {
 	///   * _ConsistentRead_ \- The consistency of a read operation. If set to `true`, then a strongly consistent read is used; otherwise, an eventually consistent read is used.
 	/// If there are no unprocessed keys remaining, the response contains an empty
 	/// _UnprocessedKeys_ map.
-	pub unprocessed_keys: BatchGetRequestMap,
+	pub UnprocessedKeys: Option<BatchGetRequestMap>,
 	/// A map of table name to a list of items. Each object in _Responses_ consists of
 	/// a table name, along with a map of attribute data consisting of the data type
 	/// and attribute value.
-	pub responses: BatchGetResponseMap,
+	pub Responses: Option<BatchGetResponseMap>,
 	/// The read capacity units consumed by the operation.
 	/// Each element consists of:
 	///   * _TableName_ \- The table that consumed the provisioned throughput.
 	///   * _CapacityUnits_ \- The total number of capacity units consumed.
-	pub consumed_capacity: ConsumedCapacityMultiple,
+	pub ConsumedCapacity: Option<ConsumedCapacityMultiple>,
 }
 
-/// Write BatchGetItemOutput contents to a SignedRequest
-struct BatchGetItemOutputWriter;
-impl BatchGetItemOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &BatchGetItemOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		BatchGetRequestMapWriter::write_params(params, &(prefix.to_string() + "UnprocessedKeys"), &obj.unprocessed_keys);
-		BatchGetResponseMapWriter::write_params(params, &(prefix.to_string() + "Responses"), &obj.responses);
-		ConsumedCapacityMultipleWriter::write_params(params, &(prefix.to_string() + "ConsumedCapacity"), &obj.consumed_capacity);
-	}
-}
 /// Represents attributes that are copied (projected) from the table into an
 /// index. These are in addition to the primary key attributes and index key
 /// attributes, which are automatically projected.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct Projection {
 	/// The set of attributes that are projected into the index:
 	///   * `KEYS_ONLY` \- Only the index and primary keys are projected into the index.
 	///   * `INCLUDE` \- Only the specified table attributes are projected into the index. The list of projected attributes are in _NonKeyAttributes_.
 	///   * `ALL` \- All of the table attributes are projected into the index.
-	pub projection_type: ProjectionType,
+	pub ProjectionType: Option<ProjectionType>,
 	/// Represents the non-key attribute names which will be projected into the index.
 	/// For local secondary indexes, the total count of _NonKeyAttributes_ summed
 	/// across all of the local secondary indexes, must not exceed 20. If you project
 	/// the same attribute into two different indexes, this counts as two distinct
 	/// attributes when determining the total.
-	pub non_key_attributes: NonKeyAttributeNameList,
+	pub NonKeyAttributes: Option<NonKeyAttributeNameList>,
 }
 
-/// Write Projection contents to a SignedRequest
-struct ProjectionWriter;
-impl ProjectionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &Projection) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ProjectionTypeWriter::write_params(params, &(prefix.to_string() + "ProjectionType"), &obj.projection_type);
-		NonKeyAttributeNameListWriter::write_params(params, &(prefix.to_string() + "NonKeyAttributeName"), &obj.non_key_attributes);
-	}
-}
 pub type BatchWriteItemRequestMap = HashMap<TableName,WriteRequests>;
-/// Write BatchWriteItemRequestMap contents to a SignedRequest
-struct BatchWriteItemRequestMapWriter;
-impl BatchWriteItemRequestMapWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &BatchWriteItemRequestMap) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			TableNameWriter::write_params(params, &format!("{}.{}", prefix, "TableName"), &key);
-			WriteRequestsWriter::write_params(params, &format!("{}.{}", prefix, "WriteRequests"), &value);
-			index += 1;
-		}
-	}
-}
 pub type MapAttributeValue = HashMap<AttributeName,AttributeValue>;
-/// Write MapAttributeValue contents to a SignedRequest
-struct MapAttributeValueWriter;
-impl MapAttributeValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &MapAttributeValue) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			AttributeNameWriter::write_params(params, &format!("{}.{}", prefix, "AttributeName"), &key);
-			AttributeValueWriter::write_params(params, &format!("{}.{}", prefix, "AttributeValue"), &value);
-			index += 1;
-		}
-	}
-}
 /// Represents the output of a _DescribeTable_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct DescribeTableOutput {
-	pub table: TableDescription,
+	pub Table: Option<TableDescription>,
 }
 
-/// Write DescribeTableOutput contents to a SignedRequest
-struct DescribeTableOutputWriter;
-impl DescribeTableOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &DescribeTableOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		TableDescriptionWriter::write_params(params, &(prefix.to_string() + "Table"), &obj.table);
-	}
-}
 pub type AttributeName = String;
-/// Write AttributeName contents to a SignedRequest
-struct AttributeNameWriter;
-impl AttributeNameWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &AttributeName) {
-		params.put(name, obj);
-	}
-}
 pub type ComparisonOperator = String;
-/// Write ComparisonOperator contents to a SignedRequest
-struct ComparisonOperatorWriter;
-impl ComparisonOperatorWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ComparisonOperator) {
-		params.put(name, obj);
-	}
-}
 pub type TableName = String;
-/// Write TableName contents to a SignedRequest
-struct TableNameWriter;
-impl TableNameWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &TableName) {
-		params.put(name, obj);
-	}
-}
 pub type AttributeNameList = Vec<AttributeName>;
-/// Write AttributeNameList contents to a SignedRequest
-struct AttributeNameListWriter;
-impl AttributeNameListWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &AttributeNameList) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			AttributeNameWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type KeyList = Vec<Key>;
-/// Write KeyList contents to a SignedRequest
-struct KeyListWriter;
-impl KeyListWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &KeyList) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			KeyWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type ItemCollectionMetricsPerTable = HashMap<TableName,ItemCollectionMetricsMultiple>;
-/// Write ItemCollectionMetricsPerTable contents to a SignedRequest
-struct ItemCollectionMetricsPerTableWriter;
-impl ItemCollectionMetricsPerTableWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ItemCollectionMetricsPerTable) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			TableNameWriter::write_params(params, &format!("{}.{}", prefix, "TableName"), &key);
-			ItemCollectionMetricsMultipleWriter::write_params(params, &format!("{}.{}", prefix, "ItemCollectionMetricsMultiple"), &value);
-			index += 1;
-		}
-	}
-}
 pub type SecondaryIndexesCapacityMap = HashMap<IndexName,Capacity>;
-/// Write SecondaryIndexesCapacityMap contents to a SignedRequest
-struct SecondaryIndexesCapacityMapWriter;
-impl SecondaryIndexesCapacityMapWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &SecondaryIndexesCapacityMap) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			IndexNameWriter::write_params(params, &format!("{}.{}", prefix, "IndexName"), &key);
-			CapacityWriter::write_params(params, &format!("{}.{}", prefix, "Capacity"), &value);
-			index += 1;
-		}
-	}
-}
 /// Represents the input of a _DeleteTable_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct DeleteTableInput {
 	/// The name of the table to delete.
-	pub table_name: TableName,
+	pub TableName: TableName,
 }
 
-/// Write DeleteTableInput contents to a SignedRequest
-struct DeleteTableInputWriter;
-impl DeleteTableInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &DeleteTableInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		TableNameWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_name);
-	}
-}
 /// Represents the provisioned throughput settings for a specified table or index.
 /// The settings can be modified using the _UpdateTable_ operation.
 /// For current minimum and maximum provisioned throughput values, see [Limits](ht
 /// tp://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html) in
 /// the _Amazon DynamoDB Developer Guide_.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ProvisionedThroughput {
 	/// The maximum number of writes consumed per second before DynamoDB returns a
 	/// _ThrottlingException_. For more information, see [Specifying Read and Write Re
 	/// quirements](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Wo
 	/// rkingWithTables.html#ProvisionedThroughput) in the _Amazon DynamoDB Developer
 	/// Guide_.
-	pub write_capacity_units: PositiveLongObject,
+	pub WriteCapacityUnits: PositiveLongObject,
 	/// The maximum number of strongly consistent reads consumed per second before
 	/// DynamoDB returns a _ThrottlingException_. For more information, see
 	/// [Specifying Read and Write Requirements](http://docs.aws.amazon.com/amazondyna
 	/// modb/latest/developerguide/WorkingWithTables.html#ProvisionedThroughput) in
 	/// the _Amazon DynamoDB Developer Guide_.
-	pub read_capacity_units: PositiveLongObject,
+	pub ReadCapacityUnits: PositiveLongObject,
 }
 
-/// Write ProvisionedThroughput contents to a SignedRequest
-struct ProvisionedThroughputWriter;
-impl ProvisionedThroughputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ProvisionedThroughput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		PositiveLongObjectWriter::write_params(params, &(prefix.to_string() + "WriteCapacityUnits"), &obj.write_capacity_units);
-		PositiveLongObjectWriter::write_params(params, &(prefix.to_string() + "ReadCapacityUnits"), &obj.read_capacity_units);
-	}
-}
 pub type ConditionExpression = String;
-/// Write ConditionExpression contents to a SignedRequest
-struct ConditionExpressionWriter;
-impl ConditionExpressionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ConditionExpression) {
-		params.put(name, obj);
-	}
-}
 /// Represents a condition to be compared with an attribute value. This condition
 /// can be used with _DeleteItem_, _PutItem_ or _UpdateItem_ operations; if the
 /// comparison evaluates to true, the operation succeeds; if not, the operation
@@ -3373,7 +2092,7 @@ impl ConditionExpressionWriter {
 /// _Value_ and _Exists_ are incompatible with _AttributeValueList_ and
 /// _ComparisonOperator_. Note that if you use both sets of parameters at once,
 /// DynamoDB will return a _ValidationException_ exception.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ExpectedAttributeValue {
 	/// A comparator for evaluating attributes in the _AttributeValueList_. For
 	/// example, equals, greater than, less than, etc.
@@ -3467,7 +2186,7 @@ pub struct ExpectedAttributeValue {
 	/// _AttributeValue_ element of a different type than the one provided in the
 	/// request, the value does not match. For example, `{"S":"6"}` does not compare
 	/// to `{"N":"6"}`. Also, `{"N":"6"}` does not compare to `{"NS":["6", "2", "1"]}`
-	pub comparison_operator: ComparisonOperator,
+	pub ComparisonOperator: Option<ComparisonOperator>,
 	/// Causes DynamoDB to evaluate the value before attempting a conditional
 	/// operation:
 	///   * If _Exists_ is `true`, DynamoDB will check to see if that attribute value already exists in the table. If it is found, then the operation succeeds. If it is not found, the operation fails with a _ConditionalCheckFailedException_.
@@ -3478,8 +2197,8 @@ pub struct ExpectedAttributeValue {
 	/// DynamoDB returns a _ValidationException_ if:
 	///   * _Exists_ is `true` but there is no _Value_ to check. (You expect a value to exist, but don't specify what that value is.)
 	///   * _Exists_ is `false` but you also provide a _Value_. (You cannot expect an attribute to have a value, while also expecting it not to exist.)
-	pub exists: BooleanObject,
-	pub value: AttributeValue,
+	pub Exists: Option<BooleanObject>,
+	pub Value: Option<AttributeValue>,
 	/// One or more values to evaluate against the supplied attribute. The number of
 	/// values in the list depends on the _ComparisonOperator_ being used.
 	/// For type Number, value comparisons are numeric.
@@ -3492,23 +2211,11 @@ pub struct ExpectedAttributeValue {
 	/// For information on specifying data types in JSON, see [JSON Data Format](http:
 	/// //docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataFormat.html) in
 	/// the _Amazon DynamoDB Developer Guide_.
-	pub attribute_value_list: AttributeValueList,
+	pub AttributeValueList: Option<AttributeValueList>,
 }
 
-/// Write ExpectedAttributeValue contents to a SignedRequest
-struct ExpectedAttributeValueWriter;
-impl ExpectedAttributeValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ExpectedAttributeValue) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ComparisonOperatorWriter::write_params(params, &(prefix.to_string() + "ComparisonOperator"), &obj.comparison_operator);
-		BooleanObjectWriter::write_params(params, &(prefix.to_string() + "Exists"), &obj.exists);
-		AttributeValueWriter::write_params(params, &(prefix.to_string() + "Value"), &obj.value);
-		AttributeValueListWriter::write_params(params, &(prefix.to_string() + "AttributeValue"), &obj.attribute_value_list);
-	}
-}
 /// Represents the input of a _DeleteItem_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct DeleteItemInput {
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _ConditionExpression_ instead. Do not combine legacy parameters and
@@ -3520,7 +2227,7 @@ pub struct DeleteItemInput {
 	/// If you omit _ConditionalOperator_, then `AND` is the default.
 	/// The operation will succeed only if the entire map evaluates to true.
 	/// This parameter does not support attributes of type List or Map.
-	pub conditional_operator: Option<ConditionalOperator>,
+	pub ConditionalOperator: Option<ConditionalOperator>,
 	/// One or more substitution tokens for attribute names in an expression. The
 	/// following are some use cases for using _ExpressionAttributeNames_:
 	///   * To access an attribute whose name conflicts with a DynamoDB reserved word.
@@ -3542,12 +2249,12 @@ pub struct DeleteItemInput {
 	/// For more information on expression attribute names, see [Accessing Item Attrib
 	/// utes](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressi
 	/// ons.AccessingItemAttributes.html) in the _Amazon DynamoDB Developer Guide_.
-	pub expression_attribute_names: Option<ExpressionAttributeNameMap>,
+	pub ExpressionAttributeNames: Option<ExpressionAttributeNameMap>,
 	/// Use _ReturnValues_ if you want to get the item attributes as they appeared
 	/// before they were deleted. For _DeleteItem_, the valid values are:
 	///   * `NONE` \- If _ReturnValues_ is not specified, or if its value is `NONE`, then nothing is returned. (This setting is the default for _ReturnValues_.)
 	///   * `ALL_OLD` \- The content of the old item is returned.
-	pub return_values: Option<ReturnValue>,
+	pub ReturnValues: Option<ReturnValue>,
 	/// A condition that must be satisfied in order for a conditional _DeleteItem_ to
 	/// succeed.
 	/// An expression can contain any of the following:
@@ -3560,15 +2267,15 @@ pub struct DeleteItemInput {
 	/// fyingConditions.html) in the _Amazon DynamoDB Developer Guide_.
 	/// _ConditionExpression_ replaces the legacy _ConditionalOperator_ and _Expected_
 	/// parameters.
-	pub condition_expression: Option<ConditionExpression>,
+	pub ConditionExpression: Option<ConditionExpression>,
 	/// The name of the table from which to delete the item.
-	pub table_name: TableName,
+	pub TableName: TableName,
 	/// Determines whether item collection metrics are returned. If set to `SIZE`, the
 	/// response includes statistics about item collections, if any, that were
 	/// modified during the operation are returned in the response. If set to `NONE`
 	/// (the default), no statistics are returned.
-	pub return_item_collection_metrics: Option<ReturnItemCollectionMetrics>,
-	pub return_consumed_capacity: Option<ReturnConsumedCapacity>,
+	pub ReturnItemCollectionMetrics: Option<ReturnItemCollectionMetrics>,
+	pub ReturnConsumedCapacity: Option<ReturnConsumedCapacity>,
 	/// One or more values that can be substituted in an expression.
 	/// Use the **:** (colon) character in an expression to dereference an attribute
 	/// value. For example, suppose that you wanted to check whether the value of the
@@ -3582,14 +2289,14 @@ pub struct DeleteItemInput {
 	/// For more information on expression attribute values, see [Specifying Condition
 	/// s](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions
 	/// .SpecifyingConditions.html) in the _Amazon DynamoDB Developer Guide_.
-	pub expression_attribute_values: Option<ExpressionAttributeValueMap>,
+	pub ExpressionAttributeValues: Option<ExpressionAttributeValueMap>,
 	/// A map of attribute names to _AttributeValue_ objects, representing the primary
 	/// key of the item to delete.
 	/// For the primary key, you must provide all of the attributes. For example, with
 	/// a hash type primary key, you only need to provide the hash attribute. For a
 	/// hash-and-range type primary key, you must provide both the hash attribute and
 	/// the range attribute.
-	pub key: Key,
+	pub Key: Key,
 	/// This is a legacy parameter, for backward compatibility. New applications
 	/// should use _ConditionExpression_ instead. Do not combine legacy parameters and
 	/// expression parameters in a single API call; otherwise, DynamoDB will return a
@@ -3723,84 +2430,24 @@ pub struct DeleteItemInput {
 	/// and _ComparisonOperator_. Note that if you use both sets of parameters at
 	/// once, DynamoDB will return a _ValidationException_ exception.
 	/// This parameter does not support attributes of type List or Map.
-	pub expected: Option<ExpectedAttributeMap>,
+	pub Expected: Option<ExpectedAttributeMap>,
 }
 
-/// Write DeleteItemInput contents to a SignedRequest
-struct DeleteItemInputWriter;
-impl DeleteItemInputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &DeleteItemInput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		if let Some(ref obj) = obj.conditional_operator {
-			ConditionalOperatorWriter::write_params(params, &(prefix.to_string() + "ConditionalOperator"), obj);
-		}
-		if let Some(ref obj) = obj.expression_attribute_names {
-			ExpressionAttributeNameMapWriter::write_params(params, &(prefix.to_string() + "ExpressionAttributeNames"), obj);
-		}
-		if let Some(ref obj) = obj.return_values {
-			ReturnValueWriter::write_params(params, &(prefix.to_string() + "ReturnValues"), obj);
-		}
-		if let Some(ref obj) = obj.condition_expression {
-			ConditionExpressionWriter::write_params(params, &(prefix.to_string() + "ConditionExpression"), obj);
-		}
-		TableNameWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_name);
-		if let Some(ref obj) = obj.return_item_collection_metrics {
-			ReturnItemCollectionMetricsWriter::write_params(params, &(prefix.to_string() + "ReturnItemCollectionMetrics"), obj);
-		}
-		if let Some(ref obj) = obj.return_consumed_capacity {
-			ReturnConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ReturnConsumedCapacity"), obj);
-		}
-		if let Some(ref obj) = obj.expression_attribute_values {
-			ExpressionAttributeValueMapWriter::write_params(params, &(prefix.to_string() + "ExpressionAttributeValues"), obj);
-		}
-		KeyWriter::write_params(params, &(prefix.to_string() + "Key"), &obj.key);
-		if let Some(ref obj) = obj.expected {
-			ExpectedAttributeMapWriter::write_params(params, &(prefix.to_string() + "Expected"), obj);
-		}
-	}
-}
 pub type StreamArn = String;
-/// Write StreamArn contents to a SignedRequest
-struct StreamArnWriter;
-impl StreamArnWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &StreamArn) {
-		params.put(name, obj);
-	}
-}
 /// Represents a new global secondary index to be added to an existing table.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct CreateGlobalSecondaryIndexAction {
 	/// The key schema for the global secondary index.
-	pub key_schema: KeySchema,
+	pub KeySchema: KeySchema,
 	/// The name of the global secondary index to be created.
-	pub index_name: IndexName,
-	pub projection: Projection,
-	pub provisioned_throughput: ProvisionedThroughput,
+	pub IndexName: IndexName,
+	pub Projection: Projection,
+	pub ProvisionedThroughput: ProvisionedThroughput,
 }
 
-/// Write CreateGlobalSecondaryIndexAction contents to a SignedRequest
-struct CreateGlobalSecondaryIndexActionWriter;
-impl CreateGlobalSecondaryIndexActionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &CreateGlobalSecondaryIndexAction) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		KeySchemaWriter::write_params(params, &(prefix.to_string() + "KeySchemaElement"), &obj.key_schema);
-		IndexNameWriter::write_params(params, &(prefix.to_string() + "IndexName"), &obj.index_name);
-		ProjectionWriter::write_params(params, &(prefix.to_string() + "Projection"), &obj.projection);
-		ProvisionedThroughputWriter::write_params(params, &(prefix.to_string() + "ProvisionedThroughput"), &obj.provisioned_throughput);
-	}
-}
 pub type BinaryAttributeValue = Vec<u8>;
-/// Write BinaryAttributeValue contents to a SignedRequest
-struct BinaryAttributeValueWriter;
-impl BinaryAttributeValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &BinaryAttributeValue) {
-		params.put(name, str::from_utf8(&obj).unwrap());
-	}
-}
 /// Represents the output of a _Scan_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ScanOutput {
 	/// The number of items in the response.
 	/// If you set _ScanFilter_ in the request, then _Count_ is the number of items
@@ -3808,10 +2455,10 @@ pub struct ScanOutput {
 	/// matching items before the filter was applied.
 	/// If you did not use a filter in the request, then _Count_ is the same as
 	/// _ScannedCount_.
-	pub count: Integer,
+	pub Count: Option<Integer>,
 	/// An array of item attributes that match the scan criteria. Each element in this
 	/// array consists of an attribute name and the value for that attribute.
-	pub items: ItemList,
+	pub Items: Option<ItemList>,
 	/// The primary key of the item where the operation stopped, inclusive of the
 	/// previous result set. Use this value to start a new operation, excluding this
 	/// value in the new request.
@@ -3820,7 +2467,7 @@ pub struct ScanOutput {
 	/// If _LastEvaluatedKey_ is not empty, it does not necessarily mean that there is
 	/// more data in the result set. The only way to know when you have reached the
 	/// end of the result set is when _LastEvaluatedKey_ is empty.
-	pub last_evaluated_key: Key,
+	pub LastEvaluatedKey: Option<Key>,
 	/// The number of items evaluated, before any _ScanFilter_ is applied. A high
 	/// _ScannedCount_ value with few, or no, _Count_ results indicates an inefficient
 	/// _Scan_ operation. For more information, see [Count and ScannedCount](http://do
@@ -3828,145 +2475,54 @@ pub struct ScanOutput {
 	/// ) in the _Amazon DynamoDB Developer Guide_.
 	/// If you did not use a filter in the request, then _ScannedCount_ is the same as
 	/// _Count_.
-	pub scanned_count: Integer,
-	pub consumed_capacity: ConsumedCapacity,
+	pub ScannedCount: Option<Integer>,
+	pub ConsumedCapacity: Option<ConsumedCapacity>,
 }
 
-/// Write ScanOutput contents to a SignedRequest
-struct ScanOutputWriter;
-impl ScanOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ScanOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		IntegerWriter::write_params(params, &(prefix.to_string() + "Count"), &obj.count);
-		ItemListWriter::write_params(params, &(prefix.to_string() + "AttributeMap"), &obj.items);
-		KeyWriter::write_params(params, &(prefix.to_string() + "LastEvaluatedKey"), &obj.last_evaluated_key);
-		IntegerWriter::write_params(params, &(prefix.to_string() + "ScannedCount"), &obj.scanned_count);
-		ConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ConsumedCapacity"), &obj.consumed_capacity);
-	}
-}
 /// Represents the output of an _UpdateTable_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct UpdateTableOutput {
-	pub table_description: TableDescription,
+	pub TableDescription: Option<TableDescription>,
 }
 
-/// Write UpdateTableOutput contents to a SignedRequest
-struct UpdateTableOutputWriter;
-impl UpdateTableOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &UpdateTableOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		TableDescriptionWriter::write_params(params, &(prefix.to_string() + "TableDescription"), &obj.table_description);
-	}
-}
 /// Represents the output of an _UpdateItem_ operation.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct UpdateItemOutput {
 	/// A map of attribute values as they appeared before the _UpdateItem_ operation.
 	/// This map only appears if _ReturnValues_ was specified as something other than
 	/// `NONE` in the request. Each element represents one attribute.
-	pub attributes: AttributeMap,
-	pub item_collection_metrics: ItemCollectionMetrics,
-	pub consumed_capacity: ConsumedCapacity,
+	pub Attributes: Option<AttributeMap>,
+	pub ItemCollectionMetrics: Option<ItemCollectionMetrics>,
+	pub ConsumedCapacity: Option<ConsumedCapacity>,
 }
 
-/// Write UpdateItemOutput contents to a SignedRequest
-struct UpdateItemOutputWriter;
-impl UpdateItemOutputWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &UpdateItemOutput) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		AttributeMapWriter::write_params(params, &(prefix.to_string() + "Attributes"), &obj.attributes);
-		ItemCollectionMetricsWriter::write_params(params, &(prefix.to_string() + "ItemCollectionMetrics"), &obj.item_collection_metrics);
-		ConsumedCapacityWriter::write_params(params, &(prefix.to_string() + "ConsumedCapacity"), &obj.consumed_capacity);
-	}
-}
 /// Represents the properties of a local secondary index.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct LocalSecondaryIndexDescription {
 	/// The total size of the specified index, in bytes. DynamoDB updates this value
 	/// approximately every six hours. Recent changes might not be reflected in this
 	/// value.
-	pub index_size_bytes: Long,
+	pub IndexSizeBytes: Option<Long>,
 	/// Represents the name of the local secondary index.
-	pub index_name: IndexName,
-	pub projection: Projection,
+	pub IndexName: Option<IndexName>,
+	pub Projection: Option<Projection>,
 	/// The Amazon Resource Name (ARN) that uniquely identifies the index.
-	pub index_arn: String,
+	pub IndexArn: Option<String>,
 	/// The complete index key schema, which consists of one or more pairs of
 	/// attribute names and key types (`HASH` or `RANGE`).
-	pub key_schema: KeySchema,
+	pub KeySchema: Option<KeySchema>,
 	/// The number of items in the specified index. DynamoDB updates this value
 	/// approximately every six hours. Recent changes might not be reflected in this
 	/// value.
-	pub item_count: Long,
+	pub ItemCount: Option<Long>,
 }
 
-/// Write LocalSecondaryIndexDescription contents to a SignedRequest
-struct LocalSecondaryIndexDescriptionWriter;
-impl LocalSecondaryIndexDescriptionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &LocalSecondaryIndexDescription) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		LongWriter::write_params(params, &(prefix.to_string() + "IndexSizeBytes"), &obj.index_size_bytes);
-		IndexNameWriter::write_params(params, &(prefix.to_string() + "IndexName"), &obj.index_name);
-		ProjectionWriter::write_params(params, &(prefix.to_string() + "Projection"), &obj.projection);
-		StringWriter::write_params(params, &(prefix.to_string() + "IndexArn"), &obj.index_arn);
-		KeySchemaWriter::write_params(params, &(prefix.to_string() + "KeySchemaElement"), &obj.key_schema);
-		LongWriter::write_params(params, &(prefix.to_string() + "ItemCount"), &obj.item_count);
-	}
-}
 pub type WriteRequests = Vec<WriteRequest>;
-/// Write WriteRequests contents to a SignedRequest
-struct WriteRequestsWriter;
-impl WriteRequestsWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &WriteRequests) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			WriteRequestWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type GlobalSecondaryIndexList = Vec<GlobalSecondaryIndex>;
-/// Write GlobalSecondaryIndexList contents to a SignedRequest
-struct GlobalSecondaryIndexListWriter;
-impl GlobalSecondaryIndexListWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &GlobalSecondaryIndexList) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			GlobalSecondaryIndexWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type TableStatus = String;
-/// Write TableStatus contents to a SignedRequest
-struct TableStatusWriter;
-impl TableStatusWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &TableStatus) {
-		params.put(name, obj);
-	}
-}
 pub type KeyConditions = HashMap<AttributeName,Condition>;
-/// Write KeyConditions contents to a SignedRequest
-struct KeyConditionsWriter;
-impl KeyConditionsWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &KeyConditions) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			AttributeNameWriter::write_params(params, &format!("{}.{}", prefix, "AttributeName"), &key);
-			ConditionWriter::write_params(params, &format!("{}.{}", prefix, "Condition"), &value);
-			index += 1;
-		}
-	}
-}
 /// Represents a request to perform a _PutItem_ operation on an item.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct PutRequest {
 	/// A map of attribute name to attribute values, representing the primary key of
 	/// an item to be processed by _PutItem_. All of the table's primary key
@@ -3974,225 +2530,72 @@ pub struct PutRequest {
 	/// table's key schema. If any attributes are present in the item which are part
 	/// of an index key schema for the table, their types must match the index key
 	/// schema.
-	pub item: PutItemInputAttributeMap,
+	pub Item: PutItemInputAttributeMap,
 }
 
-/// Write PutRequest contents to a SignedRequest
-struct PutRequestWriter;
-impl PutRequestWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &PutRequest) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		PutItemInputAttributeMapWriter::write_params(params, &(prefix.to_string() + "Item"), &obj.item);
-	}
-}
 pub type ConsistentRead = bool;
-/// Write ConsistentRead contents to a SignedRequest
-struct ConsistentReadWriter;
-impl ConsistentReadWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ConsistentRead) {
-		params.put(name, &obj.to_string());
-	}
-}
 pub type ExpectedAttributeMap = HashMap<AttributeName,ExpectedAttributeValue>;
-/// Write ExpectedAttributeMap contents to a SignedRequest
-struct ExpectedAttributeMapWriter;
-impl ExpectedAttributeMapWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ExpectedAttributeMap) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			AttributeNameWriter::write_params(params, &format!("{}.{}", prefix, "AttributeName"), &key);
-			ExpectedAttributeValueWriter::write_params(params, &format!("{}.{}", prefix, "ExpectedAttributeValue"), &value);
-			index += 1;
-		}
-	}
-}
 pub type ExpressionAttributeValueVariable = String;
-/// Write ExpressionAttributeValueVariable contents to a SignedRequest
-struct ExpressionAttributeValueVariableWriter;
-impl ExpressionAttributeValueVariableWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ExpressionAttributeValueVariable) {
-		params.put(name, obj);
-	}
-}
 pub type ConsumedCapacityMultiple = Vec<ConsumedCapacity>;
-/// Write ConsumedCapacityMultiple contents to a SignedRequest
-struct ConsumedCapacityMultipleWriter;
-impl ConsumedCapacityMultipleWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ConsumedCapacityMultiple) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			ConsumedCapacityWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type PutItemInputAttributeMap = HashMap<AttributeName,AttributeValue>;
-/// Write PutItemInputAttributeMap contents to a SignedRequest
-struct PutItemInputAttributeMapWriter;
-impl PutItemInputAttributeMapWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &PutItemInputAttributeMap) {
-		let mut index = 1;
-		for (key,value) in obj {
-			let prefix = &format!("{}.{}", name, index);
-			AttributeNameWriter::write_params(params, &format!("{}.{}", prefix, "AttributeName"), &key);
-			AttributeValueWriter::write_params(params, &format!("{}.{}", prefix, "AttributeValue"), &value);
-			index += 1;
-		}
-	}
-}
 pub type ItemList = Vec<AttributeMap>;
-/// Write ItemList contents to a SignedRequest
-struct ItemListWriter;
-impl ItemListWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ItemList) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			AttributeMapWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 /// The capacity units consumed by an operation. The data returned includes the
 /// total provisioned throughput consumed, along with statistics for the table and
 /// any indexes involved in the operation. _ConsumedCapacity_ is only returned if
 /// the request asked for it. For more information, see [Provisioned Throughput](h
 /// ttp://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ProvisionedThro
 /// ughputIntro.html) in the _Amazon DynamoDB Developer Guide_.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ConsumedCapacity {
 	/// The total number of capacity units consumed by the operation.
-	pub capacity_units: ConsumedCapacityUnits,
+	pub CapacityUnits: Option<ConsumedCapacityUnits>,
 	/// The amount of throughput consumed on each global index affected by the
 	/// operation.
-	pub global_secondary_indexes: SecondaryIndexesCapacityMap,
+	pub GlobalSecondaryIndexes: Option<SecondaryIndexesCapacityMap>,
 	/// The name of the table that was affected by the operation.
-	pub table_name: TableName,
+	pub TableName: Option<TableName>,
 	/// The amount of throughput consumed on each local index affected by the
 	/// operation.
-	pub local_secondary_indexes: SecondaryIndexesCapacityMap,
+	pub LocalSecondaryIndexes: Option<SecondaryIndexesCapacityMap>,
 	/// The amount of throughput consumed on the table affected by the operation.
-	pub table: Capacity,
+	pub Table: Option<Capacity>,
 }
 
-/// Write ConsumedCapacity contents to a SignedRequest
-struct ConsumedCapacityWriter;
-impl ConsumedCapacityWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ConsumedCapacity) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ConsumedCapacityUnitsWriter::write_params(params, &(prefix.to_string() + "CapacityUnits"), &obj.capacity_units);
-		SecondaryIndexesCapacityMapWriter::write_params(params, &(prefix.to_string() + "GlobalSecondaryIndexes"), &obj.global_secondary_indexes);
-		TableNameWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_name);
-		SecondaryIndexesCapacityMapWriter::write_params(params, &(prefix.to_string() + "LocalSecondaryIndexes"), &obj.local_secondary_indexes);
-		CapacityWriter::write_params(params, &(prefix.to_string() + "Table"), &obj.table);
-	}
-}
 /// An item collection is too large. This exception is only returned for tables
 /// that have one or more local secondary indexes.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct ItemCollectionSizeLimitExceededException {
 	/// The total size of an item collection has exceeded the maximum limit of 10
 	/// gigabytes.
-	pub message: ErrorMessage,
+	pub message: Option<ErrorMessage>,
 }
 
-/// Write ItemCollectionSizeLimitExceededException contents to a SignedRequest
-struct ItemCollectionSizeLimitExceededExceptionWriter;
-impl ItemCollectionSizeLimitExceededExceptionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ItemCollectionSizeLimitExceededException) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		ErrorMessageWriter::write_params(params, &(prefix.to_string() + "message"), &obj.message);
-	}
-}
 /// Represents a request to perform a _DeleteItem_ operation on an item.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct DeleteRequest {
 	/// A map of attribute name to attribute values, representing the primary key of
 	/// the item to delete. All of the table's primary key attributes must be
 	/// specified, and their data types must match those of the table's key schema.
-	pub key: Key,
+	pub Key: Key,
 }
 
-/// Write DeleteRequest contents to a SignedRequest
-struct DeleteRequestWriter;
-impl DeleteRequestWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &DeleteRequest) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		KeyWriter::write_params(params, &(prefix.to_string() + "Key"), &obj.key);
-	}
-}
 pub type BooleanAttributeValue = bool;
-/// Write BooleanAttributeValue contents to a SignedRequest
-struct BooleanAttributeValueWriter;
-impl BooleanAttributeValueWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &BooleanAttributeValue) {
-		params.put(name, &obj.to_string());
-	}
-}
 pub type IndexName = String;
-/// Write IndexName contents to a SignedRequest
-struct IndexNameWriter;
-impl IndexNameWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &IndexName) {
-		params.put(name, obj);
-	}
-}
 pub type ProjectionExpression = String;
-/// Write ProjectionExpression contents to a SignedRequest
-struct ProjectionExpressionWriter;
-impl ProjectionExpressionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ProjectionExpression) {
-		params.put(name, obj);
-	}
-}
 pub type AttributeDefinitions = Vec<AttributeDefinition>;
-/// Write AttributeDefinitions contents to a SignedRequest
-struct AttributeDefinitionsWriter;
-impl AttributeDefinitionsWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &AttributeDefinitions) {
-		let mut index = 1;
-		for element in obj.iter() {
-			let key = &format!("{}.{}", name, index);
-			AttributeDefinitionWriter::write_params(params, key, &element);
-			index += 1;
-		}
-	}
-}
 pub type PositiveIntegerObject = i32;
-/// Write PositiveIntegerObject contents to a SignedRequest
-struct PositiveIntegerObjectWriter;
-impl PositiveIntegerObjectWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &PositiveIntegerObject) {
-		params.put(name, &obj.to_string());
-	}
-}
 /// Represents a global secondary index to be deleted from an existing table.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct DeleteGlobalSecondaryIndexAction {
 	/// The name of the global secondary index to be deleted.
-	pub index_name: IndexName,
+	pub IndexName: IndexName,
 }
 
-/// Write DeleteGlobalSecondaryIndexAction contents to a SignedRequest
-struct DeleteGlobalSecondaryIndexActionWriter;
-impl DeleteGlobalSecondaryIndexActionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &DeleteGlobalSecondaryIndexAction) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		IndexNameWriter::write_params(params, &(prefix.to_string() + "IndexName"), &obj.index_name);
-	}
-}
 /// Represents the properties of a table.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct TableDescription {
 	/// The Amazon Resource Name (ARN) that uniquely identifies the table.
-	pub table_arn: String,
+	pub TableArn: Option<String>,
 	/// Represents one or more local secondary indexes on the table. Each index is
 	/// scoped to a given hash key value. Tables with one or more local secondary
 	/// indexes are subject to an item collection size limit, where the amount of data
@@ -4210,13 +2613,13 @@ pub struct TableDescription {
 	///   * _ItemCount_ \- Represents the number of items in the index. DynamoDB updates this value approximately every six hours. Recent changes might not be reflected in this value.
 	/// If the table is in the `DELETING` state, no information about indexes will be
 	/// returned.
-	pub local_secondary_indexes: LocalSecondaryIndexDescriptionList,
+	pub LocalSecondaryIndexes: Option<LocalSecondaryIndexDescriptionList>,
 	/// An array of _AttributeDefinition_ objects. Each of these objects describes one
 	/// attribute in the table and index key schema.
 	/// Each _AttributeDefinition_ object in this array is composed of:
 	///   * _AttributeName_ \- The name of the attribute.
 	///   * _AttributeType_ \- The data type for the attribute.
-	pub attribute_definitions: AttributeDefinitions,
+	pub AttributeDefinitions: Option<AttributeDefinitions>,
 	/// The global secondary indexes, if any, on the table. Each index is scoped to a
 	/// given hash key value. Each element is composed of:
 	///   * _Backfilling_ \- If true, then the index is currently in the backfilling phase. Backfilling occurs only when a new global secondary index is added to the table; it is the process by which DynamoDB populates the new index with data from the table. (This attribute does not appear for indexes that were created during a _CreateTable_ operation.)
@@ -4238,24 +2641,24 @@ pub struct TableDescription {
 	///   * _ProvisionedThroughput_ \- The provisioned throughput settings for the global secondary index, consisting of read and write capacity units, along with data about increases and decreases. 
 	/// If the table is in the `DELETING` state, no information about indexes will be
 	/// returned.
-	pub global_secondary_indexes: GlobalSecondaryIndexDescriptionList,
+	pub GlobalSecondaryIndexes: Option<GlobalSecondaryIndexDescriptionList>,
 	/// The provisioned throughput settings for the table, consisting of read and
 	/// write capacity units, along with data about increases and decreases.
-	pub provisioned_throughput: ProvisionedThroughputDescription,
+	pub ProvisionedThroughput: Option<ProvisionedThroughputDescription>,
 	/// The total size of the specified table, in bytes. DynamoDB updates this value
 	/// approximately every six hours. Recent changes might not be reflected in this
 	/// value.
-	pub table_size_bytes: Long,
+	pub TableSizeBytes: Option<Long>,
 	/// The name of the table.
-	pub table_name: TableName,
+	pub TableName: Option<TableName>,
 	/// The current state of the table:
 	///   * _CREATING_ \- The table is being created.
 	///   * _UPDATING_ \- The table is being updated.
 	///   * _DELETING_ \- The table is being deleted.
 	///   * _ACTIVE_ \- The table is ready for use.
-	pub table_status: TableStatus,
+	pub TableStatus: Option<TableStatus>,
 	/// The current DynamoDB Streams configuration for the table.
-	pub stream_specification: StreamSpecification,
+	pub StreamSpecification: Option<StreamSpecification>,
 	/// A timestamp, in ISO 8601 format, for this stream.
 	/// Note that _LatestStreamLabel_ is not a unique identifier for the stream,
 	/// because it is possible that a stream from another table might have the same
@@ -4264,78 +2667,39 @@ pub struct TableDescription {
 	///   * the AWS customer ID.
 	///   * the table name.
 	///   * the _StreamLabel_.
-	pub latest_stream_label: String,
+	pub LatestStreamLabel: Option<String>,
 	/// The primary key structure for the table. Each _KeySchemaElement_ consists of:
 	///   * _AttributeName_ \- The name of the attribute.
 	///   * _KeyType_ \- The key type for the attribute. Can be either `HASH` or `RANGE`.
 	/// For more information about primary keys, see [Primary Key](http://docs.aws.ama
 	/// zon.com/amazondynamodb/latest/developerguide/DataModel.html#DataModelPrimaryKe
 	/// y) in the _Amazon DynamoDB Developer Guide_.
-	pub key_schema: KeySchema,
+	pub KeySchema: Option<KeySchema>,
 	/// The number of items in the specified table. DynamoDB updates this value
 	/// approximately every six hours. Recent changes might not be reflected in this
 	/// value.
-	pub item_count: Long,
+	pub ItemCount: Option<Long>,
 	/// The date and time when the table was created, in [UNIX epoch
 	/// time](http://www.epochconverter.com/) format.
-	pub creation_date_time: Date,
+	pub CreationDateTime: Option<Date>,
 	/// The Amazon Resource Name (ARN) that uniquely identifies the latest stream for
 	/// this table.
-	pub latest_stream_arn: StreamArn,
+	pub LatestStreamArn: Option<StreamArn>,
 }
 
-/// Write TableDescription contents to a SignedRequest
-struct TableDescriptionWriter;
-impl TableDescriptionWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &TableDescription) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		StringWriter::write_params(params, &(prefix.to_string() + "TableArn"), &obj.table_arn);
-		LocalSecondaryIndexDescriptionListWriter::write_params(params, &(prefix.to_string() + "LocalSecondaryIndexDescription"), &obj.local_secondary_indexes);
-		AttributeDefinitionsWriter::write_params(params, &(prefix.to_string() + "AttributeDefinition"), &obj.attribute_definitions);
-		GlobalSecondaryIndexDescriptionListWriter::write_params(params, &(prefix.to_string() + "GlobalSecondaryIndexDescription"), &obj.global_secondary_indexes);
-		ProvisionedThroughputDescriptionWriter::write_params(params, &(prefix.to_string() + "ProvisionedThroughput"), &obj.provisioned_throughput);
-		LongWriter::write_params(params, &(prefix.to_string() + "TableSizeBytes"), &obj.table_size_bytes);
-		TableNameWriter::write_params(params, &(prefix.to_string() + "TableName"), &obj.table_name);
-		TableStatusWriter::write_params(params, &(prefix.to_string() + "TableStatus"), &obj.table_status);
-		StreamSpecificationWriter::write_params(params, &(prefix.to_string() + "StreamSpecification"), &obj.stream_specification);
-		StringWriter::write_params(params, &(prefix.to_string() + "LatestStreamLabel"), &obj.latest_stream_label);
-		KeySchemaWriter::write_params(params, &(prefix.to_string() + "KeySchemaElement"), &obj.key_schema);
-		LongWriter::write_params(params, &(prefix.to_string() + "ItemCount"), &obj.item_count);
-		DateWriter::write_params(params, &(prefix.to_string() + "CreationDateTime"), &obj.creation_date_time);
-		StreamArnWriter::write_params(params, &(prefix.to_string() + "LatestStreamArn"), &obj.latest_stream_arn);
-	}
-}
 pub type ItemCollectionSizeEstimateBound = f64;
-/// Write ItemCollectionSizeEstimateBound contents to a SignedRequest
-struct ItemCollectionSizeEstimateBoundWriter;
-impl ItemCollectionSizeEstimateBoundWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &ItemCollectionSizeEstimateBound) {
-		params.put(name, &obj.to_string());
-	}
-}
 /// Represents an operation to perform - either _DeleteItem_ or _PutItem_. You can
 /// only request one of these operations, not both, in a single _WriteRequest_. If
 /// you do need to perform both of these operations, you will need to provide two
 /// separate _WriteRequest_ objects.
-#[derive(Debug, Default, RustcDecodable)]
+#[derive(Debug, Default, RustcDecodable, RustcEncodable)]
 pub struct WriteRequest {
 	/// A request to perform a _PutItem_ operation.
-	pub put_request: PutRequest,
+	pub PutRequest: Option<PutRequest>,
 	/// A request to perform a _DeleteItem_ operation.
-	pub delete_request: DeleteRequest,
+	pub DeleteRequest: Option<DeleteRequest>,
 }
 
-/// Write WriteRequest contents to a SignedRequest
-struct WriteRequestWriter;
-impl WriteRequestWriter {
-	fn write_params(params: &mut Params, name: &str, obj: &WriteRequest) {
-		let mut prefix = name.to_string();
-		if prefix != "" { prefix.push_str("."); }
-		PutRequestWriter::write_params(params, &(prefix.to_string() + "PutRequest"), &obj.put_request);
-		DeleteRequestWriter::write_params(params, &(prefix.to_string() + "DeleteRequest"), &obj.delete_request);
-	}
-}
 pub struct DynamoDBClient<'a> {
 	creds: Box<AWSCredentialsProvider + 'a>,
 	region: &'a Region
@@ -4357,16 +2721,15 @@ impl<'a> DynamoDBClient<'a> {
 	/// issue another _UpdateTable_ request. When the table returns to the `ACTIVE`
 	/// state, the _UpdateTable_ operation is complete.
 	pub fn update_table(&mut self, input: &UpdateTableInput) -> Result<UpdateTableOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "UpdateTable");
-		UpdateTableInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.UpdateTable");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: UpdateTableOutput = json::decode(&body).unwrap();
@@ -4391,16 +2754,15 @@ impl<'a> DynamoDBClient<'a> {
 	/// automatically deleted after 24 hours.
 	/// Use the _DescribeTable_ API to check the status of the table.
 	pub fn delete_table(&mut self, input: &DeleteTableInput) -> Result<DeleteTableOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "DeleteTable");
-		DeleteTableInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.DeleteTable");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: DeleteTableOutput = json::decode(&body).unwrap();
@@ -4454,16 +2816,15 @@ impl<'a> DynamoDBClient<'a> {
 	/// ocs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithTables.html
 	/// #CapacityUnitCalculations) in the _Amazon DynamoDB Developer Guide_.
 	pub fn batch_get_item(&mut self, input: &BatchGetItemInput) -> Result<BatchGetItemOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "BatchGetItem");
-		BatchGetItemInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.BatchGetItem");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: BatchGetItemOutput = json::decode(&body).unwrap();
@@ -4490,16 +2851,15 @@ impl<'a> DynamoDBClient<'a> {
 	/// the table or local secondary index. However, you can use strongly consistent
 	/// reads instead by setting the _ConsistentRead_ parameter to _true_.
 	pub fn scan(&mut self, input: &ScanInput) -> Result<ScanOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "Scan");
-		ScanInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.Scan");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: ScanOutput = json::decode(&body).unwrap();
@@ -4517,16 +2877,15 @@ impl<'a> DynamoDBClient<'a> {
 	/// table might not be available at that moment. Wait for a few seconds, and then
 	/// try the DescribeTable request again.
 	pub fn describe_table(&mut self, input: &DescribeTableInput) -> Result<DescribeTableOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "DescribeTable");
-		DescribeTableInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.DescribeTable");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: DescribeTableOutput = json::decode(&body).unwrap();
@@ -4590,16 +2949,15 @@ impl<'a> DynamoDBClient<'a> {
 	///   * Any individual item in a batch exceeds 400 KB.
 	///   * The total request size exceeds 16 MB.
 	pub fn batch_write_item(&mut self, input: &BatchWriteItemInput) -> Result<BatchWriteItemOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "BatchWriteItem");
-		BatchWriteItemInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.BatchWriteItem");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: BatchWriteItemOutput = json::decode(&body).unwrap();
@@ -4621,16 +2979,15 @@ impl<'a> DynamoDBClient<'a> {
 	/// secondary indexes can be in the `CREATING` state at any given time.
 	/// You can use the _DescribeTable_ API to check the table status.
 	pub fn create_table(&mut self, input: &CreateTableInput) -> Result<CreateTableOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "CreateTable");
-		CreateTableInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.CreateTable");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: CreateTableOutput = json::decode(&body).unwrap();
@@ -4643,16 +3000,15 @@ impl<'a> DynamoDBClient<'a> {
 	/// endpoint. The output from _ListTables_ is paginated, with each page returning
 	/// a maximum of 100 table names.
 	pub fn list_tables(&mut self, input: &ListTablesInput) -> Result<ListTablesOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "ListTables");
-		ListTablesInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.ListTables");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: ListTablesOutput = json::decode(&body).unwrap();
@@ -4669,16 +3025,15 @@ impl<'a> DynamoDBClient<'a> {
 	/// `true`. Although a strongly consistent read might take more time than an
 	/// eventually consistent read, it always returns the last updated value.
 	pub fn get_item(&mut self, input: &GetItemInput) -> Result<GetItemOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "GetItem");
-		GetItemInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.GetItem");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: GetItemOutput = json::decode(&body).unwrap();
@@ -4710,16 +3065,15 @@ impl<'a> DynamoDBClient<'a> {
 	/// Global secondary indexes support eventually consistent reads only, so do not
 	/// specify _ConsistentRead_ when querying a global secondary index.
 	pub fn query(&mut self, input: &QueryInput) -> Result<QueryOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "Query");
-		QueryInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.Query");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: QueryOutput = json::decode(&body).unwrap();
@@ -4751,16 +3105,15 @@ impl<'a> DynamoDBClient<'a> {
 	/// s.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithItems.html)
 	/// in the _Amazon DynamoDB Developer Guide_.
 	pub fn put_item(&mut self, input: &PutItemInput) -> Result<PutItemOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "PutItem");
-		PutItemInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.PutItem");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: PutItemOutput = json::decode(&body).unwrap();
@@ -4778,16 +3131,15 @@ impl<'a> DynamoDBClient<'a> {
 	/// You can also return the item's attribute values in the same _UpdateItem_
 	/// operation using the _ReturnValues_ parameter.
 	pub fn update_item(&mut self, input: &UpdateItemInput) -> Result<UpdateItemOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "UpdateItem");
-		UpdateItemInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.UpdateItem");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: UpdateItemOutput = json::decode(&body).unwrap();
@@ -4808,16 +3160,15 @@ impl<'a> DynamoDBClient<'a> {
 	/// are met. If those conditions are met, DynamoDB performs the delete. Otherwise,
 	/// the item is not deleted.
 	pub fn delete_item(&mut self, input: &DeleteItemInput) -> Result<DeleteItemOutput, AWSError> {
+		let encoded = json::encode(&input).unwrap();
 		let mut request = SignedRequest::new("POST", "dynamodb", &self.region, "/");
-		let mut params = Params::new();
-		params.put("Action", "DeleteItem");
-		DeleteItemInputWriter::write_params(&mut params, "", &input);
-		request.set_params(params);
+		request.set_content_type("application/x-amz-json-1.0".to_string());
+		request.add_header("x-amz-target", "DynamoDB_20120810.DeleteItem");
+		request.set_payload(Some(encoded.as_bytes()));
 		let mut result = request.sign_and_execute(try!(self.creds.get_credentials()));
 		let status = result.status.to_u16();
 		let mut body = String::new();
 		result.read_to_string(&mut body).unwrap();
-		println!("{}", body);
 		match status {
 			200 => { 
 				let decoded: DeleteItemOutput = json::decode(&body).unwrap();

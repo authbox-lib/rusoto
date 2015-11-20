@@ -11,12 +11,12 @@ documentation = "http://dualspark.github.io/rusoto/rusoto/index.html"
 exclude = [".gitignore", ".travis.yml", "docgen.sh", "codegen/botocore_parser.py", "codegen/requirements.txt", "codegen/*.json"]
 
 [dependencies]
-xml-rs = "=0.1.26"
-time = "=0.1.32"
-openssl = "=0.7.0"
+xml-rs = "0.1.26"
+time = "0.1"
+openssl = "0.7"
 hyper = { git = "https://github.com/hyperium/hyper.git", rev = "799698ca8" }
-url = "=0.2.37"
-rustc-serialize = "=0.3.16"
-regex = "=0.1.41"
-chrono = "=0.2.16"
-rust-crypto = "=0.2.34"
+url = "0.2.37"
+rustc-serialize = "0.3.16"
+regex = "0.1.41"
+chrono = "0.2.16"
+rust-crypto = "0.2.34"
